@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>田园连连看</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(160deg, #c8e6c9 0%, #fff9c4 60%, #ffe0b2 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    color: #4e342e;
+  }
+
+  h1 {
+    font-size: 28px;
+    margin-bottom: 8px;
+    color: #33691e;
+    text-shadow: 1px 1px 0 #fff;
+    letter-spacing: 2px;
+  }
+
+  #tip {
+    height: 22px;
+    font-size: 14px;
+    color: #bf360c;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(14, 44px);
+    grid-template-rows: repeat(10, 44px);
+    gap: 4px;
+    padding: 12px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(85,139,47,0.25), inset 0 0 0 2px rgba(255,255,255,0.6);
+  }
+
+  .cell {
+    width: 44px;
+    height: 44px;
+    background: #fffaf0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(0,0,0,0.04);
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+
+  .cell:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+  }
+
+  .cell.selected {
+    background: #fff9c4;
+    box-shadow: 0 0 0 3px #fbc02d, 0 4px 8px rgba(251,192,45,0.5);
+    transform: translateY(-2px);
+  }
+
+  .cell.hint {
+    animation: blink 0.4s ease-in-out infinite alternate;
+  }
+
+  @keyframes blink {
+    from { box-shadow: 0 0 0 3px #4caf50, 0 0 8px rgba(76,175,80,0.6); background: #c8e6c9; }
+    to   { box-shadow: 0 0 0 3px #81c784, 0 0 16px rgba(76,175,80,0.9); background: #a5d6a7; }
+  }
+
+  .cell.shake {
+    animation: shake 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  }
+  @keyframes shake {
+    10%, 90%  { transform: translateX(-2px) rotate(-3deg); }
+    20%, 80%  { transform: translateX(4px) rotate(5deg); }
+    30%, 50%, 70% { transform: translateX(-6px) rotate(-7deg); }
+    40%, 60%  { transform: translateX(6px) rotate(7deg); }
+    0%, 100%  { transform: translateX(0) rotate(0); }
+  }
+
+  .cell.empty {
+    background: transparent;
+    box-shadow: none;
+    cursor: default;
+  }
+  .cell.empty:hover { transform: none; }
+
+  #controls {
+    margin-top: 18px;
+    display: flex;
+    gap: 14px;
+  }
+
+  button.tool {
+    font-size: 16px;
+    padding: 10px 22px;
+    border: none;
+    border-radius: 24px;
+    cursor: pointer;
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  button.tool:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.2); }
+  button.tool:active { transform: translateY(0); }
+  #hintBtn { background: linear-gradient(135deg, #fbc02d, #f57c00); }
+  #shuffleBtn { background: linear-gradient(135deg, #66bb6a, #2e7d32); }
+  #restartBtn { background: linear-gradient(135deg, #ba68c8, #6a1b9a); }
+
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  #overlay.show { display: flex; }
+  #overlay .card {
+    background: #fff;
+    padding: 32px 48px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    animation: pop 0.3s ease-out;
+  }
+  @keyframes pop {
+    from { transform: scale(0.7); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+  #overlay h2 { color: #33691e; margin-bottom: 16px; font-size: 28px; }
+</style>
+</head>
+<body>
+  <h1>🌻 田园连连看 🐔</h1>
+  <div id="tip"></div>
+  <div id="board"></div>
+  <div id="controls">
+    <button class="tool" id="hintBtn">💡 提示</button>
+    <button class="tool" id="shuffleBtn">🔀 重排</button>
+    <button class="tool" id="restartBtn">🔄 重开</button>
+  </div>
+
+  <div id="overlay">
+    <div class="card">
+      <h2>🎉 游戏胜利！</h2>
+      <button class="tool" id="winRestart" style="background:linear-gradient(135deg,#66bb6a,#2e7d32);">再来一局</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const ROWS = 10, COLS = 14;
+  const EMOJIS = ['🥦','🥬','🍅','🥕','🌽','🍆','🧅','🥔','🥒','🫑','🎃','🍇','🍎','🚜'];
+  // 使用 14 种 emoji，每种 10 个 = 140
+
+  const boardEl = document.getElementById('board');
+  const tipEl = document.getElementById('tip');
+  const overlay = document.getElementById('overlay');
+
+  let board = [];     // ROWS x COLS, emoji string or null
+  let cellEls = [];   // dom 引用
+  let busy = false;
+
+  // 选择/等待状态机
+  // mode: 'idle' | 'selected' | 'waiting'
+  let mode = 'idle';
+  let anchor = null;       // {r,c,el}
+  let candidates = [];     // [{r,c,el}]
+  // 拖拽状态
+  let drag = null;
+  const DRAG_THRESHOLD = 10;
+  const CELL_PX = 48;      // 单元格+gap 近似值
+
+  function buildEmojiPool() {
+    const pool = [];
+    for (let i = 0; i < 14; i++) {
+      for (let j = 0; j < 10; j++) pool.push(EMOJIS[i]);
+    }
+    // 洗牌
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool;
+  }
+
+  function initBoard() {
+    const pool = buildEmojiPool();
+    board = [];
+    let k = 0;
+    for (let r = 0; r < ROWS; r++) {
+      const row = [];
+      for (let c = 0; c < COLS; c++) {
+        row.push(pool[k++]);
+      }
+      board.push(row);
+    }
+    // 保证开局可解
+    while (!hasAnySolvablePair()) reshuffle(false);
+    renderBoard();
+  }
+
+  function renderBoard() {
+    boardEl.innerHTML = '';
+    cellEls = [];
+    for (let r = 0; r < ROWS; r++) {
+      const rowArr = [];
+      for (let c = 0; c < COLS; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.r = r;
+        cell.dataset.c = c;
+        const emoji = board[r][c];
+        if (emoji === null) {
+          cell.classList.add('empty');
+        } else {
+          cell.textContent = emoji;
+        }
+        boardEl.appendChild(cell);
+        rowArr.push(cell);
+      }
+      cellEls.push(rowArr);
+    }
+    cancelSelection();
+  }
+
+  // 0 折直线连通判断
+  function isClearPath(r1, c1, r2, c2) {
+    if (r1 === r2) {
+      const [a, b] = c1 < c2 ? [c1, c2] : [c2, c1];
+      for (let c = a + 1; c < b; c++) if (board[r1][c] !== null) return false;
+      return true;
+    }
+    if (c1 === c2) {
+      const [a, b] = r1 < r2 ? [r1, r2] : [r2, r1];
+      for (let r = a + 1; r < b; r++) if (board[r][c1] !== null) return false;
+      return true;
+    }
+    return false;
+  }
+
+  // 从 (r,c) 沿四方向直线扫描，找符合 0 折消除的同图案方块
+  // 每个方向至多 1 个（被同图案或异图案阻挡）
+  function findTargets(r, c) {
+    const emoji = board[r][c];
+    if (!emoji) return [];
+    const targets = [];
+    // 上
+    for (let rr = r - 1; rr >= 0; rr--) {
+      if (board[rr][c] === emoji) { targets.push({ r: rr, c }); break; }
+      if (board[rr][c] !== null) break;
+    }
+    // 下
+    for (let rr = r + 1; rr < ROWS; rr++) {
+      if (board[rr][c] === emoji) { targets.push({ r: rr, c }); break; }
+      if (board[rr][c] !== null) break;
+    }
+    // 左
+    for (let cc = c - 1; cc >= 0; cc--) {
+      if (board[r][cc] === emoji) { targets.push({ r, c: cc }); break; }
+      if (board[r][cc] !== null) break;
+    }
+    // 右
+    for (let cc = c + 1; cc < COLS; cc++) {
+      if (board[r][cc] === emoji) { targets.push({ r, c: cc }); break; }
+      if (board[r][cc] !== null) break;
+    }
+    return targets;
+  }
+
+  function canMatch(r1, c1, r2, c2) {
+    if (r1 === r2 && c1 === c2) return false;
+    if (board[r1][c1] === null || board[r2][c2] === null) return false;
+    if (board[r1][c1] !== board[r2][c2]) return false;
+    return isClearPath(r1, c1, r2, c2);
+  }
+
+  // 是否还有可消除对
+  function hasAnySolvablePair() {
+    return findSolvablePair() !== null;
+  }
+
+  // 找一对可消除方块 {r1,c1,r2,c2}
+  function findSolvablePair() {
+    // 按图案分组
+    const map = {};
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const e = board[r][c];
+        if (!e) continue;
+        (map[e] = map[e] || []).push([r, c]);
+      }
+    }
+    for (const e in map) {
+      const list = map[e];
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+          const [r1, c1] = list[i];
+          const [r2, c2] = list[j];
+          if ((r1 === r2 || c1 === c2) && isClearPath(r1, c1, r2, c2)) {
+            return { r1, c1, r2, c2 };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function onCellClick(r, c, el) {
+    if (busy) return;
+    if (board[r][c] === null) return;
+    clearTip();
+
+    // waiting 状态：点击候选项 → 消除
+    if (mode === 'waiting' && candidates.some(p => p.r === r && p.c === c)) {
+      eliminate(anchor, { r, c, el });
+      return;
+    }
+    // 点击 anchor 自身 → 取消
+    if (mode !== 'idle' && anchor && anchor.r === r && anchor.c === c) {
+      cancelSelection();
+      return;
+    }
+    // 其它情况：取消当前选中，重新评估
+    cancelSelection();
+    selectAndEvaluate(r, c);
+  }
+
+  function selectAndEvaluate(r, c) {
+    const el = cellEls[r][c];
+    const targets = findTargets(r, c);
+    if (targets.length === 1) {
+      // 1 个目标：自动消除
+      const t = targets[0];
+      eliminate({ r, c, el }, { r: t.r, c: t.c, el: cellEls[t.r][t.c] });
+    } else if (targets.length >= 2) {
+      // 多目标：高亮 anchor + 候选
+      mode = 'waiting';
+      anchor = { r, c, el };
+      el.classList.add('selected');
+      candidates = targets.map(t => ({ r: t.r, c: t.c, el: cellEls[t.r][t.c] }));
+      candidates.forEach(p => p.el.classList.add('hint'));
+    } else {
+      // 0 目标：盘面所有同图案方块一起平滑晃动
+      shakeSameEmoji(board[r][c]);
+    }
+  }
+
+  function shakeSameEmoji(emoji) {
+    const targets = [];
+    for (let rr = 0; rr < ROWS; rr++) {
+      for (let cc = 0; cc < COLS; cc++) {
+        if (board[rr][cc] === emoji) targets.push(cellEls[rr][cc]);
+      }
+    }
+    if (!targets.length) return;
+    targets.forEach(el => {
+      el.classList.remove('shake');
+      void el.offsetWidth; // 重启动画
+      el.classList.add('shake');
+    });
+    setTimeout(() => {
+      targets.forEach(el => el.classList.remove('shake'));
+    }, 580);
+  }
+
+  function eliminate(a, b) {
+    board[a.r][a.c] = null;
+    board[b.r][b.c] = null;
+    [a, b].forEach(p => {
+      p.el.classList.remove('selected', 'hint');
+      p.el.classList.add('empty');
+      p.el.textContent = '';
+    });
+    cancelSelection();
+    afterEliminate();
+  }
+
+  function cancelSelection() {
+    if (anchor) anchor.el.classList.remove('selected');
+    candidates.forEach(p => p.el.classList.remove('hint'));
+    anchor = null;
+    candidates = [];
+    mode = 'idle';
+  }
+
+  // ===== 空间平移（推/Push）=====
+  // 语义：被拖拽方块为受力点，沿拖动方向推动；
+  //       连锁推动 = 当前格 + 拖动方向上的连续非空方块（被推方在前进方向末端）；
+  //       推动量受链尾外侧连续空位数约束，不越界、不覆盖其它方块。
+  // 返回 { applied, moves:[{fromR,fromC,toR,toC}] }
+  function shiftSegment(r, c, axis, delta) {
+    if (delta === 0) return { applied: 0, moves: [] };
+    const NOPE = { applied: 0, moves: [] };
+    if (axis === 'row') {
+      if (delta > 0) {
+        const lo = c;
+        let hi = c;
+        while (hi < COLS - 1 && board[r][hi + 1] !== null) hi++;
+        let cnt = 0, cc = hi + 1;
+        while (cc < COLS && board[r][cc] === null) { cnt++; cc++; }
+        const shift = Math.min(delta, cnt);
+        if (shift <= 0) return NOPE;
+        const moves = [];
+        for (let x = hi; x >= lo; x--) {
+          moves.push({ fromR: r, fromC: x, toR: r, toC: x + shift });
+          board[r][x + shift] = board[r][x];
+          board[r][x] = null;
+        }
+        return { applied: shift, moves };
+      } else {
+        const hi = c;
+        let lo = c;
+        while (lo > 0 && board[r][lo - 1] !== null) lo--;
+        let cnt = 0, cc = lo - 1;
+        while (cc >= 0 && board[r][cc] === null) { cnt++; cc--; }
+        const shift = Math.min(-delta, cnt);
+        if (shift <= 0) return NOPE;
+        const moves = [];
+        for (let x = lo; x <= hi; x++) {
+          moves.push({ fromR: r, fromC: x, toR: r, toC: x - shift });
+          board[r][x - shift] = board[r][x];
+          board[r][x] = null;
+        }
+        return { applied: -shift, moves };
+      }
+    } else {
+      if (delta > 0) {
+        const lo = r;
+        let hi = r;
+        while (hi < ROWS - 1 && board[hi + 1][c] !== null) hi++;
+        let cnt = 0, rr = hi + 1;
+        while (rr < ROWS && board[rr][c] === null) { cnt++; rr++; }
+        const shift = Math.min(delta, cnt);
+        if (shift <= 0) return NOPE;
+        const moves = [];
+        for (let x = hi; x >= lo; x--) {
+          moves.push({ fromR: x, fromC: c, toR: x + shift, toC: c });
+          board[x + shift][c] = board[x][c];
+          board[x][c] = null;
+        }
+        return { applied: shift, moves };
+      } else {
+        const hi = r;
+        let lo = r;
+        while (lo > 0 && board[lo - 1][c] !== null) lo--;
+        let cnt = 0, rr = lo - 1;
+        while (rr >= 0 && board[rr][c] === null) { cnt++; rr--; }
+        const shift = Math.min(-delta, cnt);
+        if (shift <= 0) return NOPE;
+        const moves = [];
+        for (let x = lo; x <= hi; x++) {
+          moves.push({ fromR: x, fromC: c, toR: x - shift, toC: c });
+          board[x - shift][c] = board[x][c];
+          board[x][c] = null;
+        }
+        return { applied: -shift, moves };
+      }
+    }
+  }
+
+  // FLIP 风格动画：被移动的内容现在 (toR,toC)，先平移回 (fromR,fromC) 起始位置，再过渡到 0
+  function animateMoves(moves, duration) {
+    if (!moves.length) return;
+    moves.forEach(m => {
+      const el = cellEls[m.toR] && cellEls[m.toR][m.toC];
+      if (!el) return;
+      const dx = (m.fromC - m.toC) * CELL_PX;
+      const dy = (m.fromR - m.toR) * CELL_PX;
+      el.style.transition = 'none';
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+    });
+    // 强制 reflow
+    const first = cellEls[moves[0].toR][moves[0].toC];
+    void first.offsetWidth;
+    requestAnimationFrame(() => {
+      moves.forEach(m => {
+        const el = cellEls[m.toR] && cellEls[m.toR][m.toC];
+        if (el) {
+          el.style.transition = `transform ${duration}ms ease-out`;
+          el.style.transform = '';
+        }
+      });
+    });
+    setTimeout(() => {
+      moves.forEach(m => {
+        const el = cellEls[m.toR] && cellEls[m.toR][m.toC];
+        if (el) { el.style.transition = ''; el.style.transform = ''; }
+      });
+    }, duration + 30);
+  }
+
+  function deepCopyBoard() {
+    return board.map(row => row.slice());
+  }
+  function restoreBoard(snap) {
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        board[r][c] = snap[r][c];
+  }
+
+  function pointerXY(e) {
+    if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  function cellFromTarget(t) {
+    const el = t.closest && t.closest('.cell');
+    if (!el || el.classList.contains('empty')) return null;
+    return { r: +el.dataset.r, c: +el.dataset.c, el };
+  }
+
+  function onPointerDown(e) {
+    if (busy) return;
+    const cell = cellFromTarget(e.target);
+    if (!cell) return;
+    const { x, y } = pointerXY(e);
+    drag = {
+      r: cell.r, c: cell.c,
+      startX: x, startY: y,
+      axis: null, lastShift: 0, moved: false,
+      curR: cell.r, curC: cell.c,
+      snapshot: deepCopyBoard(),  // 推动前的盘面快照
+      history: []                 // 所有本次推动产生的 moves
+    };
+  }
+
+  function onPointerMove(e) {
+    if (!drag) return;
+    const { x, y } = pointerXY(e);
+    const dx = x - drag.startX;
+    const dy = y - drag.startY;
+    if (!drag.axis) {
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+        drag.axis = Math.abs(dx) > Math.abs(dy) ? 'row' : 'col';
+        cancelSelection();
+      } else return;
+    }
+    if (e.cancelable) e.preventDefault();
+    const want = Math.round((drag.axis === 'row' ? dx : dy) / CELL_PX);
+    if (want === drag.lastShift) return;
+    const delta = want - drag.lastShift;
+    const result = shiftSegment(drag.curR, drag.curC, drag.axis, delta);
+    if (result.applied !== 0) {
+      drag.lastShift += result.applied;
+      if (drag.axis === 'row') drag.curC += result.applied;
+      else drag.curR += result.applied;
+      drag.moved = true;
+      drag.history.push(...result.moves);
+      syncDOM();
+      animateMoves(result.moves, 110);
+    } else {
+      drag.lastShift = want;
+    }
+  }
+
+  function onPointerUp(e) {
+    if (!drag) return;
+    const wasDrag = drag.moved;
+    const info = {
+      r: drag.r, c: drag.c,
+      curR: drag.curR, curC: drag.curC,
+      snapshot: drag.snapshot,
+      history: drag.history
+    };
+    drag = null;
+
+    if (!wasDrag) {
+      onCellClick(info.r, info.c, cellEls[info.r][info.c]);
+      return;
+    }
+
+    // 推动结束：检查被推方块的末端是否存在可消除目标
+    const targets = findTargets(info.curR, info.curC);
+    if (targets.length === 0) {
+      // 不可消除 → 平滑回滚
+      const revertMoves = info.history.map(m => ({
+        fromR: m.toR, fromC: m.toC, toR: m.fromR, toC: m.fromC
+      }));
+      restoreBoard(info.snapshot);
+      syncDOM();
+      animateMoves(revertMoves, 200);
+      showTip('无可消除，已还原');
+      return;
+    }
+
+    // 可消除：按消除逻辑处理
+    if (targets.length === 1) {
+      const t = targets[0];
+      eliminate(
+        { r: info.curR, c: info.curC, el: cellEls[info.curR][info.curC] },
+        { r: t.r, c: t.c, el: cellEls[t.r][t.c] }
+      );
+    } else {
+      // 多目标：进入等待状态，玩家二次确认
+      mode = 'waiting';
+      const el = cellEls[info.curR][info.curC];
+      anchor = { r: info.curR, c: info.curC, el };
+      el.classList.add('selected');
+      candidates = targets.map(t => ({ r: t.r, c: t.c, el: cellEls[t.r][t.c] }));
+      candidates.forEach(p => p.el.classList.add('hint'));
+      showTip('多目标，请点击要消除的方块');
+    }
+  }
+
+  // 仅更新 DOM 文本与 empty 类，避免重建监听
+  function syncDOM() {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const el = cellEls[r][c];
+        const v = board[r][c];
+        if (v === null) {
+          if (!el.classList.contains('empty')) {
+            el.classList.add('empty');
+            el.textContent = '';
+          }
+        } else {
+          if (el.classList.contains('empty')) el.classList.remove('empty');
+          if (el.textContent !== v) el.textContent = v;
+        }
+      }
+    }
+  }
+
+  function afterEliminate() {
+    // 胜利？
+    if (isAllCleared()) {
+      overlay.classList.add('show');
+      return;
+    }
+    // 死局？
+    if (!hasAnySolvablePair()) {
+      showTip('已自动为您重新洗牌');
+      reshuffle(true);
+    }
+  }
+
+  function isAllCleared() {
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        if (board[r][c] !== null) return false;
+    return true;
+  }
+
+  // 重排：打乱当前所有非空方块
+  function reshuffle(reframe = true) {
+    const pieces = [];
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        if (board[r][c] !== null) pieces.push(board[r][c]);
+
+    let attempts = 0;
+    do {
+      for (let i = pieces.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+      }
+      let k = 0;
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+          if (board[r][c] !== null) board[r][c] = pieces[k++];
+      attempts++;
+      if (attempts > 200) break;
+    } while (!hasAnySolvablePair());
+
+    if (reframe) {
+      cancelSelection();
+      renderBoard();
+    }
+  }
+
+  // Hint
+  function hint() {
+    if (busy) return;
+    clearTip();
+    const pair = findSolvablePair();
+    if (!pair) {
+      showTip('当前盘面无可消除对，已自动重排');
+      reshuffle(true);
+      return;
+    }
+    const e1 = cellEls[pair.r1][pair.c1];
+    const e2 = cellEls[pair.r2][pair.c2];
+    e1.classList.add('hint');
+    e2.classList.add('hint');
+    setTimeout(() => {
+      e1.classList.remove('hint');
+      e2.classList.remove('hint');
+    }, 2000);
+  }
+
+  let tipTimer = null;
+  function showTip(msg) {
+    tipEl.textContent = msg;
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(() => { tipEl.textContent = ''; }, 2500);
+  }
+  function clearTip() {
+    if (tipTimer) { clearTimeout(tipTimer); tipTimer = null; }
+    tipEl.textContent = '';
+  }
+
+  // 事件绑定
+  document.getElementById('hintBtn').addEventListener('click', hint);
+  document.getElementById('shuffleBtn').addEventListener('click', () => {
+    if (busy) return;
+    showTip('已重新洗牌');
+    reshuffle(true);
+  });
+  document.getElementById('restartBtn').addEventListener('click', restart);
+  document.getElementById('winRestart').addEventListener('click', restart);
+
+  // 拖拽/点击事件（事件代理）
+  boardEl.addEventListener('mousedown', onPointerDown);
+  boardEl.addEventListener('touchstart', onPointerDown, { passive: false });
+  window.addEventListener('mousemove', onPointerMove);
+  window.addEventListener('touchmove', onPointerMove, { passive: false });
+  window.addEventListener('mouseup', onPointerUp);
+  window.addEventListener('touchend', onPointerUp);
+  window.addEventListener('touchcancel', onPointerUp);
+
+  function restart() {
+    overlay.classList.remove('show');
+    showTip('新的一局开始！');
+    initBoard();
+  }
+
+  // 启动
+  initBoard();
+})();
+</script>
+</body>
+</html>
