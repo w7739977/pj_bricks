@@ -134,10 +134,12 @@ function selectAndEvaluate(r, c) {
     el.classList.add('selected');
     state.anchor = { r, c, el };
     state.mode = 'selected';
+    setBusy(true); // 保护 220ms 窗口，防止用户再次点击导致状态混乱
     setTimeout(() => {
       if (state.anchor && state.anchor.r === r && state.anchor.c === c) {
         eliminate({ r, c, el }, { r: t.r, c: t.c, el: state.cellEls[t.r][t.c] });
       }
+      setBusy(false); // 无论是否消除，都解除 busy
     }, 220);
   } else if (targets.length >= 2) {
     state.mode = 'waiting';
@@ -230,7 +232,7 @@ function hint() {
 function afterEliminate() {
   if (isAllCleared()) {
     setBusy(true);
-    const w = showWin();
+    const w = showWin({ onClose: () => setBusy(false) });
     w.onRestart(() => { restart(); });
     return;
   }

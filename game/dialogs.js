@@ -2,7 +2,7 @@
 
 const $ = (id) => document.getElementById(id);
 
-export function showWin() {
+export function showWin({ onClose } = {}) {
   const dlg = $('winDialog');
   const card = dlg.querySelector('.dialog__card');
   dlg.showModal();
@@ -10,13 +10,14 @@ export function showWin() {
   const closeBtn = dlg.querySelector('[data-close]');
   const listeners = [];
   const close = () => { if (dlg.open) dlg.close(); };
+  const handleClose = () => { close(); onClose && onClose(); };
   restartBtns.forEach(btn => btn.addEventListener('click', () => {
     close();
     listeners.forEach(cb => cb());
   }, { once: true }));
-  closeBtn.addEventListener('click', close, { once: true });
+  closeBtn.addEventListener('click', handleClose, { once: true });
   return {
-    close,
+    close: handleClose,
     onRestart: (cb) => listeners.push(cb),
   };
 }
