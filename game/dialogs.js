@@ -49,9 +49,12 @@ export function showGameOver(deadlockCount) {
     const restartBtn = dlg.querySelector('[data-gameover-restart]');
     if (desc) desc.textContent = `本局共出现 ${deadlockCount} 次死局`;
     dlg.showModal();
-    const onRestart = () => { dlg.close(); restartBtn.removeEventListener('click', onRestart); resolve(); };
     const onCancel = (e) => { e.preventDefault(); };
-    restartBtn.addEventListener('click', onRestart);
+    const cleanup = () => {
+      dlg.removeEventListener('cancel', onCancel);
+    };
+    const onRestart = () => { dlg.close(); cleanup(); resolve(); };
+    restartBtn.addEventListener('click', onRestart, { once: true });
     dlg.addEventListener('cancel', onCancel);
     setTimeout(() => restartBtn.focus(), 50);
   });
