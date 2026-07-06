@@ -314,8 +314,11 @@ function onPointerDown(e) {
   if (state.busy) return;
   const cell = cellFromTarget(e.target);
   if (!cell) return;
-  // 若有未决推动（多目标 waiting），先回滚再 snapshot，避免 snapshot 错位
-  if (state.pendingRevert) rollbackPending();
+  // 若点击 waiting 候选方块 → 不回滚，让 onCellClick 走 commit 路径
+  // 否则（点 anchor 自身/点其它方块/开始新拖拽）有未决推动则先回滚
+  const isCandidateClick = state.mode === 'waiting' &&
+    state.candidates.some(p => p.r === cell.r && p.c === cell.c);
+  if (state.pendingRevert && !isCandidateClick) rollbackPending();
   const { x, y } = pointerXY(e);
   state.drag = {
     r: cell.r, c: cell.c,
