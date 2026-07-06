@@ -89,6 +89,7 @@ function syncDOM() {
           el.classList.add('empty');
           el.innerHTML = '';
         }
+        delete el.dataset.rendered; // 否则下次回填同图标时 syncDOM 会跳过 innerHTML 更新
       } else {
         if (el.classList.contains('empty')) el.classList.remove('empty');
         const want = ICONS[ICON_NAMES[v]];
