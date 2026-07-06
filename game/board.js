@@ -133,7 +133,6 @@ export function applyShift(board, r, c, axis, delta) {
   const doMove = (lo, hi, axisIsRow, dir) => {
     // dir = +1 向索引增大，-1 向索引减小
     // 计算链尾外侧连续空位数
-    const len = hi - lo + 1;
     const tailNext = dir > 0 ? hi + 1 : lo - 1;
     const maxR = ROWS - 1, maxC = COLS - 1;
     let cnt = 0;
@@ -185,7 +184,7 @@ export function applyShift(board, r, c, axis, delta) {
     if (delta > 0) {
       let hi = r;
       while (hi < ROWS - 1 && board[hi + 1][c] !== null) hi++;
-      return doMove(c, hi, false, +1);
+      return doMove(r, hi, false, +1);
     } else {
       let lo = r;
       while (lo > 0 && board[lo - 1][c] !== null) lo--;
