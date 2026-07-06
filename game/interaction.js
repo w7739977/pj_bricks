@@ -417,8 +417,36 @@ function onPointerUp(e) {
   }
 }
 
-// ---- 动画（占位，Task 8 实现）----
-function animateMoves(moves, duration) { /* Task 8 */ }
+// ---- 动画（FLIP + state.pitch，Task 8 实现）----
+function animateMoves(moves, duration) {
+  if (!moves.length) return;
+  // 用 state.pitch 计算 dx/dy（A6）
+  moves.forEach(m => {
+    const el = state.cellEls[m.toR] && state.cellEls[m.toR][m.toC];
+    if (!el) return;
+    const dx = (m.fromC - m.toC) * state.pitch;
+    const dy = (m.fromR - m.toR) * state.pitch;
+    el.style.transition = 'none';
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+  });
+  const first = state.cellEls[moves[0].toR][moves[0].toC];
+  void first.offsetWidth;
+  requestAnimationFrame(() => {
+    moves.forEach(m => {
+      const el = state.cellEls[m.toR] && state.cellEls[m.toR][m.toC];
+      if (el) {
+        el.style.transition = `transform ${duration}ms cubic-bezier(0.34, 1.56, 0.64, 1)`;
+        el.style.transform = '';
+      }
+    });
+  });
+  setTimeout(() => {
+    moves.forEach(m => {
+      const el = state.cellEls[m.toR] && state.cellEls[m.toR][m.toC];
+      if (el) { el.style.transition = ''; el.style.transform = ''; }
+    });
+  }, duration + 30);
+}
 
 // ---- 启动 ----
 export function initGame() {
