@@ -295,10 +295,127 @@ function clearTip() {
   if (el) el.textContent = '';
 }
 
-// ---- 拖拽（占位，Task 7 实现）----
-function onPointerDown(e) { /* Task 7 */ }
-function onPointerMove(e) { /* Task 7 */ }
-function onPointerUp(e)   { /* Task 7 */ }
+// ---- 拖拽（Task 7 实现）----
+function pointerXY(e) {
+  if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  if (e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+  return { x: e.clientX, y: e.clientY };
+}
+
+function cellFromTarget(t) {
+  const el = t.closest && t.closest('.cell');
+  if (!el || el.classList.contains('empty')) return null;
+  return { r: +el.dataset.r, c: +el.dataset.c, el };
+}
+
+// A5：touchstart 即标记 drag，touchmove 始终 preventDefault
+function onPointerDown(e) {
+  if (state.busy) return;
+  const cell = cellFromTarget(e.target);
+  if (!cell) return;
+  // 若有未决推动（多目标 waiting），先回滚再 snapshot，避免 snapshot 错位
+  if (state.pendingRevert) rollbackPending();
+  const { x, y } = pointerXY(e);
+  state.drag = {
+    r: cell.r, c: cell.c,
+    startX: x, startY: y,
+    axis: null,
+    lastShift: 0,
+    moved: false,
+    curR: cell.r, curC: cell.c,
+    snapshot: cloneBoard(state.board),
+    history: [],
+    blockedHintAt: 0,
+  };
+}
+
+function onPointerMove(e) {
+  if (!state.drag) return;
+  // A5：drag 进行中始终阻止默认（防页面滚动）
+  if (e.cancelable) e.preventDefault();
+  const { x, y } = pointerXY(e);
+  const dx = x - state.drag.startX;
+  const dy = y - state.drag.startY;
+  if (!state.drag.axis) {
+    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+      state.drag.axis = Math.abs(dx) > Math.abs(dy) ? 'row' : 'col';
+      cancelSelection();
+      if (state.pendingRevert) rollbackPending();
+    } else return;
+  }
+  const want = Math.round((state.drag.axis === 'row' ? dx : dy) / state.pitch);
+  if (want === state.drag.lastShift) return;
+  const delta = want - state.drag.lastShift;
+  const result = applyShift(state.board, state.drag.curR, state.drag.curC, state.drag.axis, delta);
+  if (result.applied !== 0) {
+    state.drag.lastShift += result.applied;
+    if (state.drag.axis === 'row') state.drag.curC += result.applied;
+    else state.drag.curR += result.applied;
+    state.drag.moved = true;
+    state.drag.history.push(...result.moves);
+    syncDOM();
+    animateMoves(result.moves, 110);
+  } else {
+    // A4：边界阻挡，lastShift 保持不变；触觉反馈，但不跳跃
+    const now = Date.now();
+    if (now - state.drag.blockedHintAt > 200) {
+      state.drag.blockedHintAt = now;
+      if (navigator.vibrate) navigator.vibrate(8);
+    }
+  }
+}
+
+function onPointerUp(e) {
+  if (!state.drag) return;
+  const wasDrag = state.drag.moved;
+  const info = {
+    r: state.drag.r, c: state.drag.c,
+    curR: state.drag.curR, curC: state.drag.curC,
+    snapshot: state.drag.snapshot,
+    history: state.drag.history,
+  };
+  state.drag = null;
+
+  if (!wasDrag) {
+    onCellClick(info.r, info.c);
+    return;
+  }
+
+  const targets = findTargets(state.board, info.curR, info.curC);
+  if (targets.length === 0) {
+    const revertMoves = info.history.map(m => ({
+      fromR: m.toR, fromC: m.toC, toR: m.fromR, toC: m.fromC,
+    }));
+    restoreBoard(state.board, info.snapshot);
+    syncDOM();
+    animateMoves(revertMoves, 200);
+    showTip('无可消除，已还原');
+    return;
+  }
+
+  if (targets.length === 1) {
+    const t = targets[0];
+    eliminate(
+      { r: info.curR, c: info.curC, el: state.cellEls[info.curR][info.curC] },
+      { r: t.r, c: t.c, el: state.cellEls[t.r][t.c] }
+    );
+  } else {
+    // A3：多目标 → 进入 waiting，保留 pendingRevert 以便玩家取消时回滚
+    state.mode = 'waiting';
+    const el = state.cellEls[info.curR][info.curC];
+    state.anchor = { r: info.curR, c: info.curC, el };
+    el.classList.add('selected');
+    state.candidates = targets.map(t => ({ r: t.r, c: t.c, el: state.cellEls[t.r][t.c] }));
+    state.candidates.forEach(p => p.el.classList.add('hint'));
+    state.pendingRevert = {
+      snapshot: info.snapshot,
+      revertMoves: info.history.map(m => ({
+        fromR: m.toR, fromC: m.toC, toR: m.fromR, toC: m.fromC,
+      })),
+    };
+    showTip('多目标，请点击要消除的方块（点空白取消并还原）');
+  }
+}
 
 // ---- 动画（占位，Task 8 实现）----
 function animateMoves(moves, duration) { /* Task 8 */ }
