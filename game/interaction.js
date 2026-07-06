@@ -358,7 +358,7 @@ function onPointerMove(e) {
     state.drag.moved = true;
     state.drag.history.push(...result.moves);
     syncDOM();
-    animateMoves(result.moves, 110);
+    animateMoves(result.moves, 90);
   } else {
     // A4：边界阻挡，lastShift 保持不变；触觉反馈，但不跳跃
     const now = Date.now();
@@ -439,7 +439,7 @@ function animateMoves(moves, duration) {
     moves.forEach(m => {
       const el = state.cellEls[m.toR] && state.cellEls[m.toR][m.toC];
       if (el) {
-        el.style.transition = `transform ${duration}ms cubic-bezier(0.34, 1.56, 0.64, 1)`;
+        el.style.transition = `transform ${duration}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
         el.style.transform = '';
       }
     });
