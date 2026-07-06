@@ -1,1 +1,330 @@
-// 状态与交互 — Task 7-10 填充
+import {
+  ROWS, COLS, createBoard, findTargets, findSolvablePair,
+  hasAnySolvablePair, reshuffleInPlace, applyShift,
+  cloneBoard, restoreBoard,
+} from './board.js';
+import { ICON_NAMES, ICONS, withFace } from './svg-icons.js';
+import { showWin, showDeadlock, showGameOver } from './dialogs.js';
+
+// ---- 内部状态（模块私有）----
+const state = {
+  board: null,
+  cellEls: [],            // DOM 引用 [r][c]
+  busy: false,            // 异步窗口期间为 true，阻塞所有输入
+  mode: 'idle',           // 'idle' | 'selected' | 'waiting'
+  anchor: null,           // { r, c, el }
+  candidates: [],         // [{ r, c, el }]
+  pendingRevert: null,    // 多目标 waiting 期间保留的回滚快照 { snapshot, revertMoves }
+  pitch: 35,              // 当前单元格中心距，由 measurePitch() 维护
+  round: 1,
+  deadlockCount: 0,
+  drag: null,
+  hintTimer: null,
+};
+
+const DRAG_THRESHOLD = 10;
+
+const boardEl = () => document.getElementById('board');
+const tipEl = () => document.getElementById('tip');
+const roundEl = () => document.getElementById('round');
+
+// ---- busy 生命周期（A1）----
+function setBusy(v) { state.busy = v; }
+
+// ---- 单元格 pitch 测量（A6）----
+function measurePitch() {
+  const cells = boardEl().querySelectorAll('.cell');
+  if (cells.length < 2) return state.pitch;
+  const a = cells[0].getBoundingClientRect();
+  const b = cells[1].getBoundingClientRect();
+  // 同行第二格：横向间距；若不相邻（换行）则取纵向
+  if (Math.abs(a.top - b.top) < 2) {
+    state.pitch = Math.round(b.left - a.left);
+  } else {
+    // 取单格宽 + gap，用 CSS 变量读
+    const cssPitch = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pitch'));
+    if (!Number.isNaN(cssPitch) && cssPitch > 0) state.pitch = cssPitch;
+  }
+}
+window.addEventListener('resize', () => {
+  clearTimeout(window.__pitchTimer);
+  window.__pitchTimer = setTimeout(measurePitch, 150);
+});
+
+// ---- 渲染 ----
+function renderBoard() {
+  const el = boardEl();
+  el.innerHTML = '';
+  state.cellEls = [];
+  for (let r = 0; r < ROWS; r++) {
+    const rowArr = [];
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+      const v = state.board[r][c];
+      if (v === null) {
+        cell.classList.add('empty');
+      } else {
+        cell.innerHTML = ICONS[ICON_NAMES[v]];
+      }
+      el.appendChild(cell);
+      rowArr.push(cell);
+    }
+    state.cellEls.push(rowArr);
+  }
+  cancelSelection();
+  requestAnimationFrame(measurePitch);
+}
+
+// 同步 DOM 文本与 empty 类，不重建监听
+function syncDOM() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const el = state.cellEls[r][c];
+      const v = state.board[r][c];
+      if (v === null) {
+        if (!el.classList.contains('empty')) {
+          el.classList.add('empty');
+          el.innerHTML = '';
+        }
+      } else {
+        if (el.classList.contains('empty')) el.classList.remove('empty');
+        const want = ICONS[ICON_NAMES[v]];
+        if (el.dataset.rendered !== ICON_NAMES[v]) {
+          el.innerHTML = want;
+          el.dataset.rendered = ICON_NAMES[v];
+        }
+      }
+    }
+  }
+}
+
+// ---- 点击交互 ----
+function onCellClick(r, c) {
+  if (state.busy) return;
+  if (state.board[r][c] === null) return;
+  clearTip();
+
+  // waiting 状态：点候选 → 消除（清 pendingRevert）
+  if (state.mode === 'waiting' && state.candidates.some(p => p.r === r && p.c === c)) {
+    commitPendingAndEliminate(r, c);
+    return;
+  }
+  // waiting 状态：点非候选 → 先回滚推动（A3），再处理新选择
+  if (state.mode === 'waiting' && state.pendingRevert) {
+    rollbackPending();
+  }
+  // 点 anchor 自身 → 取消
+  if (state.mode !== 'idle' && state.anchor && state.anchor.r === r && state.anchor.c === c) {
+    cancelSelection();
+    return;
+  }
+  cancelSelection();
+  selectAndEvaluate(r, c);
+}
+
+function selectAndEvaluate(r, c) {
+  const el = state.cellEls[r][c];
+  const targets = findTargets(state.board, r, c);
+  if (targets.length === 1) {
+    // 单目标：等待 hint 学习窗口后再消除（A8 协同）
+    const t = targets[0];
+    el.classList.add('selected');
+    state.anchor = { r, c, el };
+    state.mode = 'selected';
+    setTimeout(() => {
+      if (state.anchor && state.anchor.r === r && state.anchor.c === c) {
+        eliminate({ r, c, el }, { r: t.r, c: t.c, el: state.cellEls[t.r][t.c] });
+      }
+    }, 220);
+  } else if (targets.length >= 2) {
+    state.mode = 'waiting';
+    state.anchor = { r, c, el };
+    el.classList.add('selected');
+    state.candidates = targets.map(t => ({ r: t.r, c: t.c, el: state.cellEls[t.r][t.c] }));
+    state.candidates.forEach(p => p.el.classList.add('hint'));
+  } else {
+    shakeSameEmoji(state.board[r][c]);
+  }
+}
+
+function commitPendingAndEliminate(r, c) {
+  state.pendingRevert = null; // 提交，不再回滚
+  eliminate(state.anchor, { r, c, el: state.cellEls[r][c] });
+}
+
+function rollbackPending() {
+  if (!state.pendingRevert) return;
+  const { snapshot, revertMoves } = state.pendingRevert;
+  restoreBoard(state.board, snapshot);
+  syncDOM();
+  animateMoves(revertMoves, 180);
+  state.pendingRevert = null;
+}
+
+function eliminate(a, b) {
+  state.board[a.r][a.c] = null;
+  state.board[b.r][b.c] = null;
+  // 短暂震惊脸再消失（A8 表情动画）
+  [a, b].forEach(p => {
+    const svg = p.el.querySelector('svg.veg');
+    if (svg) p.el.innerHTML = withFace(svg.outerHTML, 'shock');
+  });
+  setTimeout(() => {
+    [a, b].forEach(p => {
+      p.el.classList.remove('selected', 'hint');
+      p.el.classList.add('empty');
+      p.el.innerHTML = '';
+      delete p.el.dataset.rendered;
+    });
+  }, 180);
+  cancelSelection();
+  afterEliminate();
+}
+
+function cancelSelection() {
+  if (state.anchor) state.anchor.el.classList.remove('selected');
+  state.candidates.forEach(p => p.el.classList.remove('hint'));
+  state.anchor = null;
+  state.candidates = [];
+  state.mode = 'idle';
+}
+
+function shakeSameEmoji(v) {
+  const targets = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (state.board[r][c] === v) targets.push(state.cellEls[r][c]);
+  if (!targets.length) return;
+  targets.forEach(el => {
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+  });
+  setTimeout(() => targets.forEach(el => el.classList.remove('shake')), 580);
+}
+
+// ---- hint（A8）----
+function hint() {
+  if (state.busy) return;
+  clearTip();
+  const pair = findSolvablePair(state.board);
+  if (!pair) {
+    showTip('当前盘面无可消除对');
+    return;
+  }
+  const e1 = state.cellEls[pair.r1][pair.c1];
+  const e2 = state.cellEls[pair.r2][pair.c2];
+  e1.classList.add('hint');
+  e2.classList.add('hint');
+  clearTimeout(state.hintTimer);
+  state.hintTimer = setTimeout(() => {
+    e1.classList.remove('hint');
+    e2.classList.remove('hint');
+  }, 2000);
+}
+
+// ---- afterEliminate：胜利 / 死局 ----
+function afterEliminate() {
+  if (isAllCleared()) {
+    setBusy(true);
+    const w = showWin();
+    w.onRestart(() => { restart(); });
+    return;
+  }
+  if (!hasAnySolvablePair(state.board)) {
+    handleDeadlock();
+  }
+}
+
+function isAllCleared() {
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (state.board[r][c] !== null) return false;
+  return true;
+}
+
+// ---- 死局处理（A2 + 状态机）----
+async function handleDeadlock() {
+  setBusy(true);
+  if (state.deadlockCount === 0) {
+    const choice = await showDeadlock();
+    if (choice === 'reshuffle') {
+      state.deadlockCount++;
+      reshuffleInPlace(state.board);
+      renderBoard();
+      showTip('已重排，继续加油');
+      setBusy(false);
+    } else {
+      restart();
+    }
+  } else {
+    await showGameOver(state.deadlockCount + 1);
+    restart();
+  }
+}
+
+// ---- 重开 ----
+function restart() {
+  state.board = createBoard();
+  state.deadlockCount = 0;
+  state.round++;
+  if (roundEl()) roundEl().textContent = String(state.round);
+  state.pendingRevert = null;
+  cancelSelection();
+  renderBoard();
+  setBusy(false);
+}
+
+// ---- 提示文字 ----
+let tipTimer = null;
+function showTip(msg) {
+  const el = tipEl();
+  if (!el) return;
+  el.textContent = msg;
+  clearTimeout(tipTimer);
+  tipTimer = setTimeout(() => { el.textContent = ''; }, 2500);
+}
+function clearTip() {
+  if (tipTimer) { clearTimeout(tipTimer); tipTimer = null; }
+  const el = tipEl();
+  if (el) el.textContent = '';
+}
+
+// ---- 拖拽（占位，Task 7 实现）----
+function onPointerDown(e) { /* Task 7 */ }
+function onPointerMove(e) { /* Task 7 */ }
+function onPointerUp(e)   { /* Task 7 */ }
+
+// ---- 动画（占位，Task 8 实现）----
+function animateMoves(moves, duration) { /* Task 8 */ }
+
+// ---- 启动 ----
+export function initGame() {
+  state.board = createBoard();
+  renderBoard();
+
+  document.getElementById('hintBtn').addEventListener('click', hint);
+  document.getElementById('shuffleBtn').addEventListener('click', () => {
+    if (state.busy) return;
+    reshuffleInPlace(state.board);
+    renderBoard();
+    showTip('已重新洗牌');
+  });
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    if (state.busy) return;
+    restart();
+  });
+
+  // 棋盘事件代理
+  const be = boardEl();
+  be.addEventListener('mousedown', onPointerDown);
+  be.addEventListener('touchstart', onPointerDown, { passive: false });
+  window.addEventListener('mousemove', onPointerMove);
+  window.addEventListener('touchmove', onPointerMove, { passive: false });
+  window.addEventListener('mouseup', onPointerUp);
+  window.addEventListener('touchend', onPointerUp);
+  window.addEventListener('touchcancel', onPointerUp);
+}
