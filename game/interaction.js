@@ -5,6 +5,7 @@ import {
 } from './board.js';
 import { ICON_NAMES, ICONS, withFace } from './svg-icons.js';
 import { showWin, showDeadlock, showGameOver } from './dialogs.js';
+import { createMoveAnimator } from './move-animation.js';
 
 // ---- 内部状态（模块私有）----
 const state = {
@@ -23,6 +24,11 @@ const state = {
 };
 
 const DRAG_THRESHOLD = 10;
+
+const moveAnimator = createMoveAnimator({
+  getCell: (r, c) => state.cellEls[r] && state.cellEls[r][c],
+  getPitch: () => state.pitch,
+});
 
 const boardEl = () => document.getElementById('board');
 const tipEl = () => document.getElementById('tip');
@@ -53,6 +59,7 @@ window.addEventListener('resize', () => {
 
 // ---- 渲染 ----
 function renderBoard() {
+  moveAnimator.cancelAll();
   const el = boardEl();
   el.innerHTML = '';
   state.cellEls = [];
@@ -423,33 +430,7 @@ function onPointerUp(e) {
 
 // ---- 动画（FLIP + state.pitch，Task 8 实现）----
 function animateMoves(moves, duration) {
-  if (!moves.length) return;
-  // 用 state.pitch 计算 dx/dy（A6）
-  moves.forEach(m => {
-    const el = state.cellEls[m.toR] && state.cellEls[m.toR][m.toC];
-    if (!el) return;
-    const dx = (m.fromC - m.toC) * state.pitch;
-    const dy = (m.fromR - m.toR) * state.pitch;
-    el.style.transition = 'none';
-    el.style.transform = `translate(${dx}px, ${dy}px)`;
-  });
-  const first = state.cellEls[moves[0].toR][moves[0].toC];
-  void first.offsetWidth;
-  requestAnimationFrame(() => {
-    moves.forEach(m => {
-      const el = state.cellEls[m.toR] && state.cellEls[m.toR][m.toC];
-      if (el) {
-        el.style.transition = `transform ${duration}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
-        el.style.transform = '';
-      }
-    });
-  });
-  setTimeout(() => {
-    moves.forEach(m => {
-      const el = state.cellEls[m.toR] && state.cellEls[m.toR][m.toC];
-      if (el) { el.style.transition = ''; el.style.transform = ''; }
-    });
-  }, duration + 30);
+  moveAnimator.animate(moves, duration);
 }
 
 // ---- 启动 ----
