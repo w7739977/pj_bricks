@@ -125,31 +125,74 @@ export function reshuffleInPlace(board, rng = Math.random) {
 }
 
 // ---- 空间平移：拖拽核心 ----
-// 语义：只移动 (r,c) 的单个元素，遇到其他元素或边界即停止
-export function applyShift(board, r, c, axis, delta) {
-  if (delta === 0 || board[r][c] === null) return { applied: 0, moves: [] };
-
-  const dir = delta > 0 ? 1 : -1;
-  const requested = Math.abs(delta);
-  let distance = 0;
-
-  for (let step = 1; step <= requested; step++) {
+export function createShiftChain(board, r, c, axis, dir) {
+  let length = 1;
+  for (let step = 1; ; step++) {
     const nextR = axis === 'row' ? r : r + dir * step;
     const nextC = axis === 'row' ? c + dir * step : c;
     if (nextR < 0 || nextR >= ROWS || nextC < 0 || nextC >= COLS) break;
-    if (board[nextR][nextC] !== null) break;
-    distance = step;
+    if (board[nextR][nextC] === null) break;
+    length++;
+  }
+  return { axis, dir, length };
+}
+
+export function createShiftRevertMoves(originR, originC, currentR, currentC, chain) {
+  const moves = [];
+  for (let i = 0; i < chain.length; i++) {
+    const offset = chain.dir * i;
+    const fromR = chain.axis === 'row' ? currentR : currentR + offset;
+    const fromC = chain.axis === 'row' ? currentC + offset : currentC;
+    const toR = chain.axis === 'row' ? originR : originR + offset;
+    const toC = chain.axis === 'row' ? originC + offset : originC;
+    if (fromR !== toR || fromC !== toC) moves.push({ fromR, fromC, toR, toC });
+  }
+  return moves;
+}
+
+// 语义：移动拖拽开始时确定的固定连接链，途中不吸收新元素
+export function applyShift(board, r, c, chain, delta) {
+  if (delta === 0 || board[r][c] === null || chain.length === 0) {
+    return { applied: 0, moves: [] };
   }
 
+  const selectedIndex = chain.axis === 'row' ? c : r;
+  const chainEnd = selectedIndex + chain.dir * (chain.length - 1);
+  const lo = Math.min(selectedIndex, chainEnd);
+  const hi = Math.max(selectedIndex, chainEnd);
+  const moveDir = delta > 0 ? 1 : -1;
+  const edge = moveDir > 0 ? hi : lo;
+  const limit = chain.axis === 'row' ? COLS : ROWS;
+  let capacity = 0;
+
+  for (let index = edge + moveDir; index >= 0 && index < limit; index += moveDir) {
+    const value = chain.axis === 'row' ? board[r][index] : board[index][c];
+    if (value !== null) break;
+    capacity++;
+  }
+
+  const distance = Math.min(Math.abs(delta), capacity);
   if (distance === 0) return { applied: 0, moves: [] };
 
-  const applied = dir * distance;
-  const toR = axis === 'row' ? r : r + applied;
-  const toC = axis === 'row' ? c + applied : c;
-  const move = { fromR: r, fromC: c, toR, toC };
-  board[toR][toC] = board[r][c];
-  board[r][c] = null;
-  return { applied, moves: [move] };
+  const applied = moveDir * distance;
+  const moves = [];
+  const start = moveDir > 0 ? hi : lo;
+  const end = moveDir > 0 ? lo : hi;
+  const iteration = moveDir > 0 ? -1 : 1;
+
+  for (let index = start; moveDir > 0 ? index >= end : index <= end; index += iteration) {
+    if (chain.axis === 'row') {
+      moves.push({ fromR: r, fromC: index, toR: r, toC: index + applied });
+      board[r][index + applied] = board[r][index];
+      board[r][index] = null;
+    } else {
+      moves.push({ fromR: index, fromC: c, toR: index + applied, toC: c });
+      board[index + applied][c] = board[index][c];
+      board[index][c] = null;
+    }
+  }
+
+  return { applied, moves };
 }
 
 export function cloneBoard(board) {

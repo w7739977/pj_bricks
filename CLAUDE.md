@@ -67,7 +67,7 @@ index.html
 - `index.html` owns the static page skeleton, controls, status regions, and the three native `<dialog>` elements.
 - `styles.css` owns the visual tokens, fixed 10-column/14-row CSS Grid, responsive cell pitch, animations, and reduced-motion overrides.
 - `game/main.js` is the browser entry point. It initializes on DOM readiness and triggers pitch remeasurement after fonts load.
-- `game/board.js` is the DOM-free model and rules layer: board generation, path checks, target discovery, deadlock detection, reshuffling, single-tile shifting, snapshots, and restoration.
+- `game/board.js` is the DOM-free model and rules layer: board generation, path checks, target discovery, deadlock detection, reshuffling, fixed-chain shifting, snapshots, and restoration.
 - `game/interaction.js` is the controller and rendering layer. It owns module-private state, synchronizes the model to existing cell elements, handles Pointer Events, drives asynchronous selection and elimination, implements drag rollback/commit, and coordinates win/deadlock flows.
 - `game/drag-input.js` locks one active pointer for the lifetime of a drag so another mouse or touch input cannot replace the dragged tile.
 - `game/move-animation.js` owns per-cell FLIP animation lifecycles. Its ownership tokens prevent stale animation callbacks from overwriting newer movement on the same cell.
@@ -88,7 +88,7 @@ index.html
 
 Keep model mutation in `game/board.js` and DOM/UI behavior in `game/interaction.js`. `game/board.js` should remain usable without a browser DOM.
 
-Dragging moves only the initially grabbed tile through consecutive empty cells. The first occupied cell or board edge blocks further movement; never push neighboring tiles. One pointer owns the drag until release or cancellation. The model shift is followed by FLIP-style transforms based on the measured `state.pitch`; do not replace this with a hard-coded cell distance. If a completed drag produces no removable target, restore the saved board and animate the reverse move. If it produces multiple targets, highlight every candidate and preserve the snapshot until the player commits one or clicks elsewhere to roll back.
+When the drag axis is first established, the grabbed tile and all immediately connected occupied tiles ahead of it form a fixed push chain. That chain may move together through consecutive empty cells. Its membership never changes during the gesture: if it later reaches an occupied tile outside the original chain, movement stops rather than absorbing that tile. One pointer owns the drag until release or cancellation. The model shift is followed by FLIP-style transforms based on the measured `state.pitch`; do not replace this with a hard-coded cell distance. If a completed drag produces no removable target for the originally grabbed tile, restore the saved board and animate the entire chain back. If it produces multiple targets, highlight every candidate and preserve the snapshot until the player commits one or clicks elsewhere to roll back.
 
 Selection and elimination contain timed asynchronous windows. Any change to these flows must keep `state.busy`, CSS selection/hint classes, timers, and dialog cleanup consistent so stale input or listeners cannot leak into the next state.
 

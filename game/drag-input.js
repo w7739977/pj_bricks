@@ -1,13 +1,3 @@
-export function createDragRevertMoves(originR, originC, currentR, currentC) {
-  if (originR === currentR && originC === currentC) return [];
-  return [{
-    fromR: currentR,
-    fromC: currentC,
-    toR: originR,
-    toC: originC,
-  }];
-}
-
 export function dragStepsFromDistance(distance, pitch, threshold) {
   if (Math.abs(distance) <= threshold) return 0;
   const rounded = Math.round(distance / pitch);

@@ -1,80 +1,94 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ROWS, COLS, applyShift, findTargets } from '../game/board.js';
+import {
+  ROWS,
+  COLS,
+  applyShift,
+  createShiftChain,
+  createShiftRevertMoves,
+  findTargets,
+} from '../game/board.js';
 
 function emptyBoard() {
   return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 }
 
-test('dragging stops at an adjacent occupied cell instead of pushing a chain', () => {
+test('a fixed connected column can be pushed into empty cells above it', () => {
   const board = emptyBoard();
-  board[0][0] = 1;
-  board[0][1] = 2;
-  board[0][2] = 3;
-  const before = board.map(row => row.slice());
+  board[3][0] = 1;
+  board[4][0] = 2;
+  board[5][0] = 3;
+  board[6][0] = 4;
+  const chain = createShiftChain(board, 6, 0, 'col', -1);
 
-  const result = applyShift(board, 0, 0, 'row', 1);
+  const result = applyShift(board, 6, 0, chain, -3);
 
-  assert.deepEqual(result, { applied: 0, moves: [] });
-  assert.deepEqual(board, before);
+  assert.deepEqual(chain, { axis: 'col', dir: -1, length: 4 });
+  assert.equal(result.applied, -3);
+  assert.equal(result.moves.length, 4);
+  assert.deepEqual(board.slice(0, 4).map(row => row[0]), [1, 2, 3, 4]);
+  assert.deepEqual(board.slice(4, 7).map(row => row[0]), [null, null, null]);
 });
 
-test('a tile can cross multiple consecutive empty cells', () => {
+test('a fixed row chain moves together through available empty cells', () => {
   const board = emptyBoard();
-  board[2][1] = 4;
+  board[2][1] = 1;
+  board[2][2] = 2;
+  board[2][3] = 3;
+  const chain = createShiftChain(board, 2, 1, 'row', 1);
 
-  const result = applyShift(board, 2, 1, 'row', 3);
+  const result = applyShift(board, 2, 1, chain, 2);
 
-  assert.deepEqual(result, {
-    applied: 3,
-    moves: [{ fromR: 2, fromC: 1, toR: 2, toC: 4 }],
-  });
-  assert.equal(board[2][1], null);
-  assert.equal(board[2][4], 4);
+  assert.equal(result.applied, 2);
+  assert.deepEqual(board[2].slice(1, 6), [null, null, 1, 2, 3]);
 });
 
-test('a tile stops in the last empty cell before an obstacle', () => {
+test('a fixed chain stops before an element outside the original chain', () => {
   const board = emptyBoard();
-  board[3][1] = 5;
-  board[3][4] = 9;
+  board[1][0] = 1;
+  board[1][1] = 2;
+  board[1][5] = 9;
+  const chain = createShiftChain(board, 1, 0, 'row', 1);
 
-  const result = applyShift(board, 3, 1, 'row', 8);
+  const result = applyShift(board, 1, 0, chain, 8);
 
-  assert.deepEqual(result, {
-    applied: 2,
-    moves: [{ fromR: 3, fromC: 1, toR: 3, toC: 3 }],
-  });
-  assert.equal(board[3][3], 5);
-  assert.equal(board[3][4], 9);
+  assert.equal(result.applied, 3);
+  assert.deepEqual(board[1].slice(0, 6), [null, null, null, 1, 2, 9]);
 });
 
-test('single-tile movement is symmetric in all four directions', () => {
-  const cases = [
-    { start: [5, 5], axis: 'row', delta: 2, end: [5, 7] },
-    { start: [5, 5], axis: 'row', delta: -2, end: [5, 3] },
-    { start: [5, 5], axis: 'col', delta: 2, end: [7, 5] },
-    { start: [5, 5], axis: 'col', delta: -2, end: [3, 5] },
-  ];
+test('a fixed chain does not absorb a new element reached later in the drag', () => {
+  const board = emptyBoard();
+  board[1][0] = 1;
+  board[1][3] = 9;
+  const chain = createShiftChain(board, 1, 0, 'row', 1);
 
-  for (const { start, axis, delta, end } of cases) {
-    const board = emptyBoard();
-    board[start[0]][start[1]] = 6;
-    const result = applyShift(board, start[0], start[1], axis, delta);
-    assert.equal(result.applied, delta);
-    assert.equal(result.moves.length, 1);
-    assert.equal(board[end[0]][end[1]], 6);
-    assert.equal(board[start[0]][start[1]], null);
-  }
+  const first = applyShift(board, 1, 0, chain, 2);
+  const second = applyShift(board, 1, 2, chain, 1);
+
+  assert.equal(first.applied, 2);
+  assert.deepEqual(second, { applied: 0, moves: [] });
+  assert.deepEqual(board[1].slice(0, 4), [null, null, 1, 9]);
 });
 
-test('moving a tile can expose every legal target for player selection', () => {
+test('chain rollback animates every member from final position to origin', () => {
+  const chain = { axis: 'col', dir: -1, length: 3 };
+
+  assert.deepEqual(createShiftRevertMoves(5, 2, 3, 2, chain), [
+    { fromR: 3, fromC: 2, toR: 5, toC: 2 },
+    { fromR: 2, fromC: 2, toR: 4, toC: 2 },
+    { fromR: 1, fromC: 2, toR: 3, toC: 2 },
+  ]);
+});
+
+test('moving the selected member can expose every legal target', () => {
   const board = emptyBoard();
   board[0][0] = 7;
   board[0][1] = 7;
   board[0][4] = 7;
+  const chain = createShiftChain(board, 0, 1, 'row', 1);
 
-  applyShift(board, 0, 1, 'row', 1);
+  applyShift(board, 0, 1, chain, 1);
 
   assert.deepEqual(findTargets(board, 0, 2), [
     { r: 0, c: 0 },

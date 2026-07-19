@@ -1,18 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  createDragInputLock,
-  createDragRevertMoves,
-  dragStepsFromDistance,
-} from '../game/drag-input.js';
-
-test('rollback uses one move from the final position to the drag origin', () => {
-  assert.deepEqual(createDragRevertMoves(2, 1, 2, 4), [
-    { fromR: 2, fromC: 4, toR: 2, toC: 1 },
-  ]);
-  assert.deepEqual(createDragRevertMoves(2, 1, 2, 1), []);
-});
+import { createDragInputLock, dragStepsFromDistance } from '../game/drag-input.js';
 
 test('crossing the drag threshold moves at least one cell', () => {
   assert.equal(dragStepsFromDistance(9, 40, 10), 0);

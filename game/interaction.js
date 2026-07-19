@@ -1,16 +1,12 @@
 import {
   ROWS, COLS, createBoard, findTargets, findSolvablePair,
   hasAnySolvablePair, reshuffleInPlace, applyShift,
-  cloneBoard, restoreBoard,
+  createShiftChain, createShiftRevertMoves, cloneBoard, restoreBoard,
 } from './board.js';
 import { ICON_NAMES, ICONS, withFace } from './svg-icons.js';
 import { showWin, showDeadlock, showGameOver } from './dialogs.js';
 import { createMoveAnimator } from './move-animation.js';
-import {
-  createDragInputLock,
-  createDragRevertMoves,
-  dragStepsFromDistance,
-} from './drag-input.js';
+import { createDragInputLock, dragStepsFromDistance } from './drag-input.js';
 
 // ---- 内部状态（模块私有）----
 const state = {
@@ -351,6 +347,7 @@ function onPointerDown(e) {
     r: cell.r, c: cell.c,
     startX: x, startY: y,
     axis: null,
+    chain: null,
     lastShift: 0,
     moved: false,
     curR: cell.r, curC: cell.c,
@@ -372,13 +369,21 @@ function onPointerMove(e) {
       state.drag.axis = Math.abs(dx) > Math.abs(dy) ? 'row' : 'col';
       cancelSelection();
       if (state.pendingRevert) rollbackPending();
+      const initialDistance = state.drag.axis === 'row' ? dx : dy;
+      state.drag.chain = createShiftChain(
+        state.board,
+        state.drag.curR,
+        state.drag.curC,
+        state.drag.axis,
+        Math.sign(initialDistance),
+      );
     } else return;
   }
   const distance = state.drag.axis === 'row' ? dx : dy;
   const want = dragStepsFromDistance(distance, state.pitch, DRAG_THRESHOLD);
   if (want === state.drag.lastShift) return;
   const delta = want - state.drag.lastShift;
-  const result = applyShift(state.board, state.drag.curR, state.drag.curC, state.drag.axis, delta);
+  const result = applyShift(state.board, state.drag.curR, state.drag.curC, state.drag.chain, delta);
   if (result.applied !== 0) {
     state.drag.lastShift += result.applied;
     if (state.drag.axis === 'row') state.drag.curC += result.applied;
@@ -402,6 +407,7 @@ function onPointerUp(e) {
   const info = {
     r: state.drag.r, c: state.drag.c,
     curR: state.drag.curR, curC: state.drag.curC,
+    chain: state.drag.chain,
     snapshot: state.drag.snapshot,
   };
   state.drag = null;
@@ -412,7 +418,7 @@ function onPointerUp(e) {
   }
 
   const targets = findTargets(state.board, info.curR, info.curC);
-  const revertMoves = createDragRevertMoves(info.r, info.c, info.curR, info.curC);
+  const revertMoves = createShiftRevertMoves(info.r, info.c, info.curR, info.curC, info.chain);
   if (targets.length === 0) {
     restoreBoard(state.board, info.snapshot);
     syncDOM();
@@ -446,7 +452,7 @@ function onPointerCancel(e) {
   state.drag = null;
   if (!info.moved) return;
 
-  const revertMoves = createDragRevertMoves(info.r, info.c, info.curR, info.curC);
+  const revertMoves = createShiftRevertMoves(info.r, info.c, info.curR, info.curC, info.chain);
   restoreBoard(state.board, info.snapshot);
   syncDOM();
   animateMoves(revertMoves, 200);
