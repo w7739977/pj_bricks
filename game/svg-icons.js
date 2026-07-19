@@ -1,8 +1,8 @@
-// 14 个田园漫画蔬菜/水果 SVG。
-// viewBox 统一 0 0 64 64；3px 深棕描边；白色高光椭圆。
-// 顺序对应 board.js 中的 ICON_NAMES。
+// 14 个高饱和手绘田园图标。统一深棕粗描边、平涂和少量内部纹理。
+// 顺序对应 board.js 中的图案编号。
 
-const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none">${body}<ellipse cx="22" cy="20" rx="6" ry="3" fill="#fff" opacity="0.35"/></svg>`;
+const INK = '#34291D';
+const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none"><g stroke="${INK}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`;
 
 export const ICON_NAMES = [
   'broccoli', 'lettuce', 'tomato', 'carrot', 'corn',
@@ -12,96 +12,89 @@ export const ICON_NAMES = [
 
 export const ICONS = {
   broccoli: S('broccoli', `
-    <path d="M20 24 Q14 18 18 12 Q22 6 30 10 Q38 4 44 10 Q52 8 50 18 Q56 22 50 28 Q52 36 42 36 L26 36 Q18 36 20 24 Z" fill="#43A047" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M30 34 L28 54 L36 54 L34 34 Z" fill="#9CCC65" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M27 33 25 55h14l-3-22Z" fill="#8CCB4F"/>
+    <path d="M18 34c-7-2-9-10-4-15-2-7 6-13 12-9 4-8 15-7 18 0 8-2 13 6 10 12 5 6 0 14-8 14Z" fill="#2EAF4A"/>
+    <path d="M20 24c4-3 8-2 10 2M36 18c4-3 9-1 10 3" stroke="#167C36" stroke-width="2.2"/>
   `),
   lettuce: S('lettuce', `
-    <path d="M10 36 Q8 22 22 20 Q26 10 38 14 Q50 10 52 24 Q60 30 52 42 Q46 54 30 52 Q14 50 10 36 Z" fill="#7CB342" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M22 30 Q26 26 30 30 M34 26 Q38 22 42 26 M26 40 Q30 36 34 40" stroke="#558B2F" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M11 37c-3-9 2-17 10-19 1-8 11-11 17-5 7-4 16 2 14 10 8 4 7 15 1 20-4 9-15 13-25 10-10 2-20-6-17-16Z" fill="#92D45D"/>
+    <path d="M19 31c5-5 10-4 13 1 4-7 11-8 16-3M18 42c6-4 10-2 13 3 4-5 10-6 15-2" stroke="#4C9B38" stroke-width="2.2"/>
   `),
   tomato: S('tomato', `
-    <circle cx="32" cy="38" r="20" fill="#E53935" stroke="#2E1F1A" stroke-width="3"/>
-    <path d="M22 18 L26 12 L30 18 L34 12 L38 18 L42 12 L46 18 L42 22 L22 22 Z" fill="#43A047" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M15 37c0-14 9-21 18-20 10-2 19 7 18 20 1 12-7 20-18 20-11 1-19-7-18-20Z" fill="#EF413D"/>
+    <path d="m21 19 5-8 6 6 5-8 3 9 8-3-5 9H22l-6-7Z" fill="#4FA83C"/>
+    <path d="M22 34c2-6 7-9 12-9" stroke="#FF7A65" stroke-width="2.2"/>
   `),
   carrot: S('carrot', `
-    <path d="M32 8 L24 22 L26 50 Q32 56 38 50 L40 22 Z" fill="#FB8C00" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M28 32 L34 30 M26 40 L34 38 M28 46 L36 44" stroke="#E65100" stroke-width="2" stroke-linecap="round"/>
-    <path d="M28 14 L22 4 L26 12 L32 2 L32 12 L38 4 L42 14 L36 12" fill="#43A047" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M22 22 31 55c1 4 5 4 7 0l8-33Z" fill="#F58B25"/>
+    <path d="m24 23-8-12 11 5L28 5l5 11L40 5l-2 12 11-6-6 13Z" fill="#4DAA43"/>
+    <path d="m28 32 8-2m-6 10 8-2m-5 10 7-2" stroke="#C85B20" stroke-width="2.2"/>
   `),
   corn: S('corn', `
-    <path d="M22 16 Q32 8 42 16 L40 52 Q32 58 24 52 Z" fill="#FDD835" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M14 18 Q22 12 28 22 L18 50 Q12 44 14 32 Z" fill="#7CB342" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M50 18 Q42 12 36 22 L46 50 Q52 44 50 32 Z" fill="#7CB342" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="28" cy="24" r="2" fill="#F9A825"/><circle cx="34" cy="26" r="2" fill="#F9A825"/>
-    <circle cx="26" cy="32" r="2" fill="#F9A825"/><circle cx="32" cy="34" r="2" fill="#F9A825"/>
-    <circle cx="28" cy="42" r="2" fill="#F9A825"/><circle cx="34" cy="44" r="2" fill="#F9A825"/>
+    <path d="M22 15c6-5 15-5 21 1l-3 38c-5 5-12 5-17 0Z" fill="#FFD43B"/>
+    <path d="M23 22C14 17 12 28 14 43c1 7 5 11 10 13l4-28Z" fill="#68B846"/>
+    <path d="M42 22c9-5 11 6 9 21-1 7-5 11-10 13l-4-28Z" fill="#58A93E"/>
+    <path d="M28 20v31m7-33v34M23 27h19m-18 9h17m-17 9h16" stroke="#D69B20" stroke-width="1.8"/>
   `),
   eggplant: S('eggplant', `
-    <path d="M22 18 Q14 26 18 42 Q22 56 34 56 Q48 56 48 40 Q48 24 38 20 Z" fill="#7E57C2" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M22 18 L18 8 L26 14 L30 4 L34 14 L42 6 L40 18 Z" fill="#43A047" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M25 19c-8 5-12 17-8 28 4 12 17 14 26 7 9-7 11-20 4-29-5-6-14-9-22-6Z" fill="#8F4DB7"/>
+    <path d="m23 20-5-10 10 4 4-9 4 9 10-5-4 12Z" fill="#55A743"/>
+    <path d="M23 45c5 6 13 7 19 1" stroke="#71328F" stroke-width="2.2"/>
   `),
   onion: S('onion', `
-    <path d="M32 8 Q12 24 18 44 Q24 58 32 58 Q40 58 46 44 Q52 24 32 8 Z" fill="#C490D1" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M32 8 L32 58 M24 22 Q32 28 40 22 M22 36 Q32 42 42 36" stroke="#7B1FA2" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <path d="M30 8 L26 2 L34 2 Z" fill="#558B2F" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M32 8c-3 9-16 14-16 30 0 12 7 19 16 19s16-7 16-19C48 22 35 17 32 8Z" fill="#B77BD0"/>
+    <path d="m32 9-3-7m3 7 5-6" stroke="#5E8C38"/>
+    <path d="M25 22c-2 12 1 24 7 34m7-34c2 12-1 24-7 34M21 36h22" stroke="#7D45A6" stroke-width="2.1"/>
   `),
   potato: S('potato', `
-    <path d="M14 30 Q12 18 24 14 Q40 10 50 22 Q56 36 46 50 Q32 56 20 48 Q12 40 14 30 Z" fill="#A1887F" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="22" cy="26" r="2" fill="#5D4037"/><circle cx="36" cy="22" r="2" fill="#5D4037"/>
-    <circle cx="44" cy="34" r="2" fill="#5D4037"/><circle cx="28" cy="42" r="2" fill="#5D4037"/>
+    <path d="M13 34c-2-12 8-21 20-22 14-1 23 8 20 22 2 12-7 21-20 22-13 0-23-8-20-22Z" fill="#B99573"/>
+    <path d="m22 26 2-1m15-4 2 1m4 14 2 1M29 43l2 1M18 38l2-1" stroke="#73533E" stroke-width="3"/>
   `),
   cucumber: S('cucumber', `
-    <path d="M8 38 Q6 22 18 18 Q34 12 48 18 Q58 26 54 40 Q48 52 32 50 Q16 50 8 38 Z" fill="#558B2F" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="rotate(-20 32 32)"/>
-    <circle cx="22" cy="28" r="1.5" fill="#33691E"/><circle cx="32" cy="24" r="1.5" fill="#33691E"/>
-    <circle cx="42" cy="30" r="1.5" fill="#33691E"/><circle cx="28" cy="36" r="1.5" fill="#33691E"/>
-    <circle cx="38" cy="40" r="1.5" fill="#33691E"/>
+    <path d="M9 38c-2-9 7-18 20-22 13-5 25-1 27 8 3 9-6 18-19 22-13 5-25 1-28-8Z" fill="#66A63C"/>
+    <path d="m22 30 1 1m10-7 1 1m10 5 1 1m-18 9 1 1m12-1 1 1" stroke="#315F2A" stroke-width="3"/>
+    <path d="M14 36c9 3 26-2 36-10" stroke="#8FCB5A" stroke-width="2.1"/>
   `),
   pepper: S('pepper', `
-    <path d="M22 20 Q14 28 18 44 Q22 56 32 54 Q44 50 44 36 Q42 24 32 22 Z" fill="#2E7D32" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M28 22 L22 12 L32 18 L36 8 L40 18" fill="#388E3C" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M24 20c-8 7-9 22-3 31 5 8 16 8 22 1 7-8 8-22 1-29-5-5-14-7-20-3Z" fill="#3D9C48"/>
+    <path d="m25 20-5-9 10 4 4-9 3 10 9-4-4 10Z" fill="#5EAE43"/>
+    <path d="M27 29c-2 8 0 15 5 21" stroke="#23743A" stroke-width="2.1"/>
   `),
   pumpkin: S('pumpkin', `
-    <ellipse cx="20" cy="38" rx="10" ry="16" fill="#F57C00" stroke="#2E1F1A" stroke-width="3"/>
-    <ellipse cx="32" cy="38" rx="14" ry="18" fill="#FB8C00" stroke="#2E1F1A" stroke-width="3"/>
-    <ellipse cx="44" cy="38" rx="10" ry="16" fill="#F57C00" stroke="#2E1F1A" stroke-width="3"/>
-    <path d="M32 14 L30 8 L34 8 Z" fill="#5D4037" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M14 39c0-11 7-18 18-18s18 7 18 18-7 17-18 17-18-6-18-17Z" fill="#F39424"/>
+    <path d="M23 23c-6 8-6 25 0 31m18-31c6 8 6 25 0 31M32 22v33" stroke="#D66B1D" stroke-width="2.2"/>
+    <path d="m31 21-2-10 7-2 1 11" fill="#6A8D36"/>
   `),
   grape: S('grape', `
-    <circle cx="24" cy="30" r="6" fill="#8E24AA" stroke="#2E1F1A" stroke-width="3"/>
-    <circle cx="36" cy="30" r="6" fill="#8E24AA" stroke="#2E1F1A" stroke-width="3"/>
-    <circle cx="30" cy="38" r="6" fill="#7B1FA2" stroke="#2E1F1A" stroke-width="3"/>
-    <circle cx="42" cy="40" r="6" fill="#8E24AA" stroke="#2E1F1A" stroke-width="3"/>
-    <circle cx="24" cy="44" r="6" fill="#7B1FA2" stroke="#2E1F1A" stroke-width="3"/>
-    <circle cx="34" cy="48" r="6" fill="#6A1B9A" stroke="#2E1F1A" stroke-width="3"/>
-    <path d="M30 18 L26 8 L36 4 L40 14 Z" fill="#43A047" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="m31 17-2-10 11-3 4 9Z" fill="#56A33E"/>
+    <circle cx="23" cy="27" r="7" fill="#8D3BB0"/><circle cx="36" cy="27" r="7" fill="#9B42BD"/>
+    <circle cx="29" cy="38" r="7" fill="#7F35A5"/><circle cx="43" cy="39" r="7" fill="#913CB4"/>
+    <circle cx="22" cy="48" r="7" fill="#923CB6"/><circle cx="36" cy="50" r="7" fill="#713094"/>
   `),
   apple: S('apple', `
-    <path d="M18 28 Q14 16 26 14 Q32 12 32 22 Q32 12 38 14 Q50 16 46 28 Q50 48 38 54 Q32 56 26 54 Q14 48 18 28 Z" fill="#D32F2F" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M32 18 L30 8 L36 6" stroke="#5D4037" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <path d="M36 12 Q44 8 46 16 Q40 18 36 14 Z" fill="#43A047" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M18 28c-3-9 5-15 13-11 8-5 18 1 15 11 5 11-2 25-13 28-12 1-21-15-15-28Z" fill="#E7473F"/>
+    <path d="M32 18c0-7 2-11 7-14" stroke="#6C4B2C"/>
+    <path d="M36 11c5-6 12-4 13 3-5 3-10 2-13-1Z" fill="#58A944"/>
+    <path d="M21 33c1-5 4-8 8-9" stroke="#FF7667" stroke-width="2.2"/>
   `),
   strawberry: S('strawberry', `
-    <path d="M32 14 Q14 18 22 40 Q28 56 32 56 Q36 56 42 40 Q50 18 32 14 Z" fill="#E91E63" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M22 14 L26 4 L30 12 L34 4 L38 12 L42 4 L46 14 Q34 18 22 14 Z" fill="#43A047" stroke="#2E1F1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="26" cy="28" r="1.6" fill="#FFEB3B"/><circle cx="34" cy="26" r="1.6" fill="#FFEB3B"/>
-    <circle cx="38" cy="32" r="1.6" fill="#FFEB3B"/><circle cx="28" cy="36" r="1.6" fill="#FFEB3B"/>
-    <circle cx="36" cy="40" r="1.6" fill="#FFEB3B"/><circle cx="30" cy="44" r="1.6" fill="#FFEB3B"/>
+    <path d="M32 15c-12 0-18 7-14 19 4 12 10 22 14 23 5-1 12-12 15-23 3-12-3-19-15-19Z" fill="#F04A61"/>
+    <path d="m18 17 6-10 5 8 5-10 4 10 9-7-3 12Z" fill="#56AA43"/>
+    <g fill="#FFE35A" stroke="none"><circle cx="26" cy="29" r="2"/><circle cx="36" cy="27" r="2"/><circle cx="41" cy="35" r="2"/><circle cx="29" cy="39" r="2"/><circle cx="34" cy="48" r="2"/></g>
   `),
 };
 
-// 在 svg 闭合前注入表情层
+// 在 SVG 闭合前注入表情层。
 export function withFace(svg, face) {
   if (!face) return svg.replace(/<g class="face[^"]*">[\s\S]*?<\/g>\s*(<\/svg>)/, '$1');
   const layer = face === 'happy'
     ? `<g class="face face--happy">
-         <path d="M22 36 Q26 32 30 36" stroke="#2E1F1A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-         <path d="M34 36 Q38 32 42 36" stroke="#2E1F1A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-         <path d="M27 42 Q32 46 37 42" stroke="#2E1F1A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+         <path d="M22 36q4-4 8 0M34 36q4-4 8 0M27 43q5 5 10 0" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
        </g>`
     : `<g class="face face--shock">
-         <circle cx="26" cy="36" r="2" fill="#2E1F1A"/>
-         <circle cx="38" cy="36" r="2" fill="#2E1F1A"/>
-         <circle cx="32" cy="44" r="3" fill="#2E1F1A"/>
+         <circle cx="26" cy="36" r="2.2" fill="${INK}"/>
+         <circle cx="38" cy="36" r="2.2" fill="${INK}"/>
+         <circle cx="32" cy="45" r="3.2" fill="${INK}"/>
        </g>`;
   return svg.replace('</svg>', `${layer}</svg>`);
 }
