@@ -137,17 +137,29 @@ export function createShiftChain(board, r, c, axis, dir) {
   return { axis, dir, length };
 }
 
-export function createShiftRevertMoves(originR, originC, currentR, currentC, chain) {
-  const moves = [];
-  for (let i = 0; i < chain.length; i++) {
+export function getShiftChainPositions(r, c, chain) {
+  return Array.from({ length: chain.length }, (_, i) => {
     const offset = chain.dir * i;
-    const fromR = chain.axis === 'row' ? currentR : currentR + offset;
-    const fromC = chain.axis === 'row' ? currentC + offset : currentC;
-    const toR = chain.axis === 'row' ? originR : originR + offset;
-    const toC = chain.axis === 'row' ? originC + offset : originC;
-    if (fromR !== toR || fromC !== toC) moves.push({ fromR, fromC, toR, toC });
-  }
-  return moves;
+    return {
+      r: chain.axis === 'row' ? r : r + offset,
+      c: chain.axis === 'row' ? c + offset : c,
+    };
+  });
+}
+
+export function createShiftRevertMoves(originR, originC, currentR, currentC, chain) {
+  const from = getShiftChainPositions(currentR, currentC, chain);
+  const to = getShiftChainPositions(originR, originC, chain);
+  return from.flatMap((position, i) => {
+    const destination = to[i];
+    if (position.r === destination.r && position.c === destination.c) return [];
+    return [{
+      fromR: position.r,
+      fromC: position.c,
+      toR: destination.r,
+      toC: destination.c,
+    }];
+  });
 }
 
 // 语义：移动拖拽开始时确定的固定连接链，途中不吸收新元素

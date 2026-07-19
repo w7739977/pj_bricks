@@ -1,12 +1,13 @@
 import {
   ROWS, COLS, createBoard, findTargets, findSolvablePair,
   hasAnySolvablePair, reshuffleInPlace, applyShift,
-  createShiftChain, createShiftRevertMoves, cloneBoard, restoreBoard,
+  createShiftChain, createShiftRevertMoves, getShiftChainPositions,
+  cloneBoard, restoreBoard,
 } from './board.js';
 import { ICON_NAMES, ICONS, withFace } from './svg-icons.js';
 import { showWin, showDeadlock, showGameOver } from './dialogs.js';
 import { createMoveAnimator } from './move-animation.js';
-import { createDragInputLock, dragStepsFromDistance } from './drag-input.js';
+import { advanceDragShift, createDragInputLock } from './drag-input.js';
 
 // ---- 内部状态（模块私有）----
 const state = {
@@ -25,6 +26,11 @@ const state = {
 };
 
 const DRAG_THRESHOLD = 10;
+const SNAP_DURATION = 120;
+
+function motionDuration(duration) {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : duration;
+}
 
 const moveAnimator = createMoveAnimator({
   getCell: (r, c) => state.cellEls[r] && state.cellEls[r][c],
@@ -349,9 +355,12 @@ function onPointerDown(e) {
     axis: null,
     chain: null,
     lastShift: 0,
+    dragged: false,
     moved: false,
     curR: cell.r, curC: cell.c,
-    snapshot: cloneBoard(state.board),
+    snapshot: null,
+    visualOffset: { x: 0, y: 0 },
+    blockedDirection: 0,
     blockedHintAt: 0,
   };
   boardEl().setPointerCapture(e.pointerId);
@@ -367,8 +376,10 @@ function onPointerMove(e) {
   if (!state.drag.axis) {
     if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
       state.drag.axis = Math.abs(dx) > Math.abs(dy) ? 'row' : 'col';
+      state.drag.dragged = true;
       cancelSelection();
       if (state.pendingRevert) rollbackPending();
+      state.drag.snapshot = cloneBoard(state.board);
       const initialDistance = state.drag.axis === 'row' ? dx : dy;
       state.drag.chain = createShiftChain(
         state.board,
@@ -379,20 +390,43 @@ function onPointerMove(e) {
       );
     } else return;
   }
+
   const distance = state.drag.axis === 'row' ? dx : dy;
-  const want = dragStepsFromDistance(distance, state.pitch, DRAG_THRESHOLD);
-  if (want === state.drag.lastShift) return;
-  const delta = want - state.drag.lastShift;
-  const result = applyShift(state.board, state.drag.curR, state.drag.curC, state.drag.chain, delta);
+  const result = advanceDragShift({
+    distance,
+    pitch: state.pitch,
+    threshold: DRAG_THRESHOLD,
+    lastShift: state.drag.lastShift,
+    blockedDirection: state.drag.blockedDirection,
+    applyShift: (delta) => applyShift(
+      state.board,
+      state.drag.curR,
+      state.drag.curC,
+      state.drag.chain,
+      delta,
+    ),
+  });
+
+  state.drag.lastShift = result.lastShift;
+  state.drag.blockedDirection = result.blockedDirection;
   if (result.applied !== 0) {
-    state.drag.lastShift += result.applied;
     if (state.drag.axis === 'row') state.drag.curC += result.applied;
     else state.drag.curR += result.applied;
     state.drag.moved = true;
     syncDOM();
-    animateMoves(result.moves, 90);
-  } else {
-    // A4：边界阻挡，lastShift 保持不变；触觉反馈，但不跳跃
+  }
+
+  state.drag.visualOffset = state.drag.axis === 'row'
+    ? { x: result.visualOffset, y: 0 }
+    : { x: 0, y: result.visualOffset };
+  moveAnimator.follow(
+    getShiftChainPositions(state.drag.curR, state.drag.curC, state.drag.chain),
+    state.drag.visualOffset.x,
+    state.drag.visualOffset.y,
+  );
+
+  if (result.constrained) {
+    // A4：边界或链外方块阻挡时，仅保留少量视觉阻力
     const now = Date.now();
     if (now - state.drag.blockedHintAt > 200) {
       state.drag.blockedHintAt = now;
@@ -403,12 +437,14 @@ function onPointerMove(e) {
 
 function onPointerUp(e) {
   if (!state.drag || !dragInput.release(e.pointerId)) return;
-  const wasDrag = state.drag.moved;
+  const wasDrag = state.drag.dragged;
   const info = {
     r: state.drag.r, c: state.drag.c,
     curR: state.drag.curR, curC: state.drag.curC,
     chain: state.drag.chain,
     snapshot: state.drag.snapshot,
+    moved: state.drag.moved,
+    visualOffset: state.drag.visualOffset,
   };
   state.drag = null;
 
@@ -417,17 +453,24 @@ function onPointerUp(e) {
     return;
   }
 
+  const snapDuration = motionDuration(SNAP_DURATION);
+  if (!info.moved) {
+    moveAnimator.settleFollow(snapDuration);
+    return;
+  }
+
   const targets = findTargets(state.board, info.curR, info.curC);
   const revertMoves = createShiftRevertMoves(info.r, info.c, info.curR, info.curC, info.chain);
   if (targets.length === 0) {
     restoreBoard(state.board, info.snapshot);
     syncDOM();
-    animateMoves(revertMoves, 200);
+    animateMoves(revertMoves, 200, info.visualOffset);
     showTip('无可消除，已还原');
     return;
   }
 
   if (targets.length === 1) {
+    moveAnimator.settleFollow(snapDuration);
     const t = targets[0];
     eliminate(
       { r: info.curR, c: info.curC, el: state.cellEls[info.curR][info.curC] },
@@ -441,7 +484,12 @@ function onPointerUp(e) {
     el.classList.add('selected');
     state.candidates = targets.map(t => ({ r: t.r, c: t.c, el: state.cellEls[t.r][t.c] }));
     state.candidates.forEach(p => p.el.classList.add('hint'));
-    state.pendingRevert = { snapshot: info.snapshot, revertMoves };
+    const pendingRevert = { snapshot: info.snapshot, revertMoves };
+    state.pendingRevert = pendingRevert;
+    if (snapDuration > 0) setBusy(true);
+    moveAnimator.settleFollow(snapDuration, () => {
+      if (state.pendingRevert === pendingRevert) setBusy(false);
+    });
     showTip('多目标，请点击要消除的方块（点空白取消并还原）');
   }
 }
@@ -450,18 +498,25 @@ function onPointerCancel(e) {
   if (!state.drag || !dragInput.release(e.pointerId)) return;
   const info = state.drag;
   state.drag = null;
-  if (!info.moved) return;
+  if (!info.dragged) return;
+  if (!info.moved) {
+    moveAnimator.settleFollow(motionDuration(SNAP_DURATION));
+    return;
+  }
 
   const revertMoves = createShiftRevertMoves(info.r, info.c, info.curR, info.curC, info.chain);
   restoreBoard(state.board, info.snapshot);
   syncDOM();
-  animateMoves(revertMoves, 200);
+  animateMoves(revertMoves, 200, info.visualOffset);
   cancelSelection();
 }
 
 // ---- 动画（FLIP + state.pitch，Task 8 实现）----
-function animateMoves(moves, duration) {
-  moveAnimator.animate(moves, duration);
+function animateMoves(moves, duration, { x = 0, y = 0 } = {}) {
+  moveAnimator.animate(moves, motionDuration(duration), {
+    offsetX: x,
+    offsetY: y,
+  });
 }
 
 // ---- 启动 ----

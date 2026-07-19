@@ -8,11 +8,21 @@ import {
   createShiftChain,
   createShiftRevertMoves,
   findTargets,
+  getShiftChainPositions,
 } from '../game/board.js';
 
 function emptyBoard() {
   return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 }
+
+test('fixed-chain positions follow the selected member and initial direction', () => {
+  assert.deepEqual(getShiftChainPositions(6, 2, { axis: 'col', dir: -1, length: 4 }), [
+    { r: 6, c: 2 },
+    { r: 5, c: 2 },
+    { r: 4, c: 2 },
+    { r: 3, c: 2 },
+  ]);
+});
 
 test('a fixed connected column can be pushed into empty cells above it', () => {
   const board = emptyBoard();
