@@ -125,72 +125,31 @@ export function reshuffleInPlace(board, rng = Math.random) {
 }
 
 // ---- 空间平移：拖拽核心 ----
-// 语义：以 (r,c) 为受力点沿 axis 推 delta 格，链尾外侧空位决定实际位移
+// 语义：只移动 (r,c) 的单个元素，遇到其他元素或边界即停止
 export function applyShift(board, r, c, axis, delta) {
-  if (delta === 0) return { applied: 0, moves: [] };
-  const NOPE = { applied: 0, moves: [] };
+  if (delta === 0 || board[r][c] === null) return { applied: 0, moves: [] };
 
-  const doMove = (lo, hi, axisIsRow, dir) => {
-    // dir = +1 向索引增大，-1 向索引减小
-    // 计算链尾外侧连续空位数
-    const tailNext = dir > 0 ? hi + 1 : lo - 1;
-    const maxR = ROWS - 1, maxC = COLS - 1;
-    let cnt = 0;
-    if (axisIsRow) {
-      let cc = tailNext;
-      while (dir > 0 ? cc <= maxC : cc >= 0) {
-        if (board[r][cc] !== null) break;
-        cnt++; cc += dir;
-      }
-    } else {
-      let rr = tailNext;
-      while (dir > 0 ? rr <= maxR : rr >= 0) {
-        if (board[rr][c] !== null) break;
-        cnt++; rr += dir;
-      }
-    }
-    const shift = Math.min(Math.abs(delta), cnt);
-    if (shift <= 0) return NOPE;
-    const moves = [];
-    const step = dir * shift;
-    if (axisIsRow) {
-      // 必须从远端开始搬，避免覆盖
-      for (let x = dir > 0 ? hi : lo; dir > 0 ? x >= lo : x <= hi; x += dir > 0 ? -1 : 1) {
-        moves.push({ fromR: r, fromC: x, toR: r, toC: x + step });
-        board[r][x + step] = board[r][x];
-        board[r][x] = null;
-      }
-    } else {
-      for (let x = dir > 0 ? hi : lo; dir > 0 ? x >= lo : x <= hi; x += dir > 0 ? -1 : 1) {
-        moves.push({ fromR: x, fromC: c, toR: x + step, toC: c });
-        board[x + step][c] = board[x][c];
-        board[x][c] = null;
-      }
-    }
-    return { applied: shift * dir, moves };
-  };
+  const dir = delta > 0 ? 1 : -1;
+  const requested = Math.abs(delta);
+  let distance = 0;
 
-  if (axis === 'row') {
-    if (delta > 0) {
-      let hi = c;
-      while (hi < COLS - 1 && board[r][hi + 1] !== null) hi++;
-      return doMove(c, hi, true, +1);
-    } else {
-      let lo = c;
-      while (lo > 0 && board[r][lo - 1] !== null) lo--;
-      return doMove(lo, c, true, -1);
-    }
-  } else { // 'col'
-    if (delta > 0) {
-      let hi = r;
-      while (hi < ROWS - 1 && board[hi + 1][c] !== null) hi++;
-      return doMove(r, hi, false, +1);
-    } else {
-      let lo = r;
-      while (lo > 0 && board[lo - 1][c] !== null) lo--;
-      return doMove(lo, r, false, -1);
-    }
+  for (let step = 1; step <= requested; step++) {
+    const nextR = axis === 'row' ? r : r + dir * step;
+    const nextC = axis === 'row' ? c + dir * step : c;
+    if (nextR < 0 || nextR >= ROWS || nextC < 0 || nextC >= COLS) break;
+    if (board[nextR][nextC] !== null) break;
+    distance = step;
   }
+
+  if (distance === 0) return { applied: 0, moves: [] };
+
+  const applied = dir * distance;
+  const toR = axis === 'row' ? r : r + applied;
+  const toC = axis === 'row' ? c + applied : c;
+  const move = { fromR: r, fromC: c, toR, toC };
+  board[toR][toC] = board[r][c];
+  board[r][c] = null;
+  return { applied, moves: [move] };
 }
 
 export function cloneBoard(board) {

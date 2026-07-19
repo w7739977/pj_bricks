@@ -6,6 +6,11 @@ import {
 import { ICON_NAMES, ICONS, withFace } from './svg-icons.js';
 import { showWin, showDeadlock, showGameOver } from './dialogs.js';
 import { createMoveAnimator } from './move-animation.js';
+import {
+  createDragInputLock,
+  createDragRevertMoves,
+  dragStepsFromDistance,
+} from './drag-input.js';
 
 // ---- 内部状态（模块私有）----
 const state = {
@@ -29,6 +34,7 @@ const moveAnimator = createMoveAnimator({
   getCell: (r, c) => state.cellEls[r] && state.cellEls[r][c],
   getPitch: () => state.pitch,
 });
+const dragInput = createDragInputLock();
 
 const boardEl = () => document.getElementById('board');
 const tipEl = () => document.getElementById('tip');
@@ -60,6 +66,8 @@ window.addEventListener('resize', () => {
 // ---- 渲染 ----
 function renderBoard() {
   moveAnimator.cancelAll();
+  dragInput.reset();
+  state.drag = null;
   const el = boardEl();
   el.innerHTML = '';
   state.cellEls = [];
@@ -305,8 +313,6 @@ function clearTip() {
 
 // ---- 拖拽（Task 7 实现）----
 function pointerXY(e) {
-  if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  if (e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
   return { x: e.clientX, y: e.clientY };
 }
 
@@ -316,16 +322,30 @@ function cellFromTarget(t) {
   return { r: +el.dataset.r, c: +el.dataset.c, el };
 }
 
-// A5：touchstart 即标记 drag，touchmove 始终 preventDefault
+// A5：Pointer Events 锁定一次拖拽的活动指针
 function onPointerDown(e) {
-  if (state.busy) return;
+  if (state.busy || state.drag) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (!dragInput.begin(e.pointerId)) return;
+
   const cell = cellFromTarget(e.target);
-  if (!cell) return;
+  if (!cell) {
+    dragInput.release(e.pointerId);
+    if (state.pendingRevert) {
+      rollbackPending();
+      cancelSelection();
+    }
+    return;
+  }
+
   // 若点击 waiting 候选方块 → 不回滚，让 onCellClick 走 commit 路径
   // 否则（点 anchor 自身/点其它方块/开始新拖拽）有未决推动则先回滚
   const isCandidateClick = state.mode === 'waiting' &&
     state.candidates.some(p => p.r === cell.r && p.c === cell.c);
-  if (state.pendingRevert && !isCandidateClick) rollbackPending();
+  if (state.pendingRevert && !isCandidateClick) {
+    rollbackPending();
+    cancelSelection();
+  }
   const { x, y } = pointerXY(e);
   state.drag = {
     r: cell.r, c: cell.c,
@@ -335,13 +355,13 @@ function onPointerDown(e) {
     moved: false,
     curR: cell.r, curC: cell.c,
     snapshot: cloneBoard(state.board),
-    history: [],
     blockedHintAt: 0,
   };
+  boardEl().setPointerCapture(e.pointerId);
 }
 
 function onPointerMove(e) {
-  if (!state.drag) return;
+  if (!state.drag || !dragInput.owns(e.pointerId)) return;
   // A5：drag 进行中始终阻止默认（防页面滚动）
   if (e.cancelable) e.preventDefault();
   const { x, y } = pointerXY(e);
@@ -354,7 +374,8 @@ function onPointerMove(e) {
       if (state.pendingRevert) rollbackPending();
     } else return;
   }
-  const want = Math.round((state.drag.axis === 'row' ? dx : dy) / state.pitch);
+  const distance = state.drag.axis === 'row' ? dx : dy;
+  const want = dragStepsFromDistance(distance, state.pitch, DRAG_THRESHOLD);
   if (want === state.drag.lastShift) return;
   const delta = want - state.drag.lastShift;
   const result = applyShift(state.board, state.drag.curR, state.drag.curC, state.drag.axis, delta);
@@ -363,7 +384,6 @@ function onPointerMove(e) {
     if (state.drag.axis === 'row') state.drag.curC += result.applied;
     else state.drag.curR += result.applied;
     state.drag.moved = true;
-    state.drag.history.push(...result.moves);
     syncDOM();
     animateMoves(result.moves, 90);
   } else {
@@ -377,13 +397,12 @@ function onPointerMove(e) {
 }
 
 function onPointerUp(e) {
-  if (!state.drag) return;
+  if (!state.drag || !dragInput.release(e.pointerId)) return;
   const wasDrag = state.drag.moved;
   const info = {
     r: state.drag.r, c: state.drag.c,
     curR: state.drag.curR, curC: state.drag.curC,
     snapshot: state.drag.snapshot,
-    history: state.drag.history,
   };
   state.drag = null;
 
@@ -393,10 +412,8 @@ function onPointerUp(e) {
   }
 
   const targets = findTargets(state.board, info.curR, info.curC);
+  const revertMoves = createDragRevertMoves(info.r, info.c, info.curR, info.curC);
   if (targets.length === 0) {
-    const revertMoves = info.history.map(m => ({
-      fromR: m.toR, fromC: m.toC, toR: m.fromR, toC: m.fromC,
-    }));
     restoreBoard(state.board, info.snapshot);
     syncDOM();
     animateMoves(revertMoves, 200);
@@ -418,14 +435,22 @@ function onPointerUp(e) {
     el.classList.add('selected');
     state.candidates = targets.map(t => ({ r: t.r, c: t.c, el: state.cellEls[t.r][t.c] }));
     state.candidates.forEach(p => p.el.classList.add('hint'));
-    state.pendingRevert = {
-      snapshot: info.snapshot,
-      revertMoves: info.history.map(m => ({
-        fromR: m.toR, fromC: m.toC, toR: m.fromR, toC: m.fromC,
-      })),
-    };
+    state.pendingRevert = { snapshot: info.snapshot, revertMoves };
     showTip('多目标，请点击要消除的方块（点空白取消并还原）');
   }
+}
+
+function onPointerCancel(e) {
+  if (!state.drag || !dragInput.release(e.pointerId)) return;
+  const info = state.drag;
+  state.drag = null;
+  if (!info.moved) return;
+
+  const revertMoves = createDragRevertMoves(info.r, info.c, info.curR, info.curC);
+  restoreBoard(state.board, info.snapshot);
+  syncDOM();
+  animateMoves(revertMoves, 200);
+  cancelSelection();
 }
 
 // ---- 动画（FLIP + state.pitch，Task 8 实现）----
@@ -452,11 +477,8 @@ export function initGame() {
 
   // 棋盘事件代理
   const be = boardEl();
-  be.addEventListener('mousedown', onPointerDown);
-  be.addEventListener('touchstart', onPointerDown, { passive: false });
-  window.addEventListener('mousemove', onPointerMove);
-  window.addEventListener('touchmove', onPointerMove, { passive: false });
-  window.addEventListener('mouseup', onPointerUp);
-  window.addEventListener('touchend', onPointerUp);
-  window.addEventListener('touchcancel', onPointerUp);
+  be.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointermove', onPointerMove, { passive: false });
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerCancel);
 }
