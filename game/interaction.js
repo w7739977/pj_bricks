@@ -5,7 +5,10 @@ import {
   cloneBoard, restoreBoard,
 } from './board.js';
 import { ICON_NAMES, ICONS, withFace } from './svg-icons.js';
-import { showWin, showDeadlock, showGameOver } from './dialogs.js';
+import { createBrowserDialogManager } from './dialogs.js';
+import { createLevelSession } from './level-session.js';
+import { createRandomSeed, createSeededRng, getLevelConfig } from './levels.js';
+import { createDefaultProgress, loadProgress, saveProgress } from './progress.js';
 import { createMoveAnimator } from './move-animation.js';
 import { advanceDragShift, createDragInputLock } from './drag-input.js';
 
@@ -19,10 +22,21 @@ const state = {
   candidates: [],         // [{ r, c, el }]
   pendingRevert: null,    // 多目标 waiting 期间保留的回滚快照 { snapshot, revertMoves }
   pitch: 35,              // 当前单元格中心距，由 measurePitch() 维护
-  round: 1,
-  deadlockCount: 0,
-  drag: null,
+  currentLevel: 1,
+  highestUnlocked: 1,
+  levelSeed: null,
+  levelConfig: null,
+  levelSession: null,
+  phase: 'loading',       // 'loading' | 'playing' | 'level-complete' | 'failed'
+  levelSessionId: 0,
+  timerIds: new Set(),
+  tipTimer: null,
   hintTimer: null,
+  hintCells: [],
+  reshuffleNonce: 0,
+  storage: null,
+  storageAvailable: true,
+  drag: null,
 };
 
 const DRAG_THRESHOLD = 10;
@@ -37,13 +51,64 @@ const moveAnimator = createMoveAnimator({
   getPitch: () => state.pitch,
 });
 const dragInput = createDragInputLock();
+const dialogs = createBrowserDialogManager();
 
 const boardEl = () => document.getElementById('board');
 const tipEl = () => document.getElementById('tip');
-const roundEl = () => document.getElementById('round');
+const levelEl = () => document.getElementById('level');
+const hintCountEl = () => document.getElementById('hintCount');
+const reshuffleCountEl = () => document.getElementById('reshuffleCount');
+const toolAvailabilityEl = () => document.getElementById('toolAvailability');
 
-// ---- busy 生命周期（A1）----
-function setBusy(v) { state.busy = v; }
+// ---- busy 与异步生命周期 ----
+function setBusy(value) {
+  state.busy = value;
+  updateLevelControls();
+}
+
+function sessionStillCurrent(sessionId) {
+  return sessionId === state.levelSessionId;
+}
+
+function scheduleForSession(callback, delay) {
+  const sessionId = state.levelSessionId;
+  const timer = setTimeout(() => {
+    state.timerIds.delete(timer);
+    if (!sessionStillCurrent(sessionId)) return;
+    callback();
+  }, delay);
+  state.timerIds.add(timer);
+  return timer;
+}
+
+function clearTrackedTimer(timer) {
+  if (timer === null) return;
+  clearTimeout(timer);
+  state.timerIds.delete(timer);
+}
+
+function clearHintHighlight() {
+  clearTrackedTimer(state.hintTimer);
+  state.hintTimer = null;
+  state.hintCells.forEach(el => el.classList.remove('hint'));
+  state.hintCells = [];
+}
+
+function clearLevelAsync() {
+  state.timerIds.forEach(clearTimeout);
+  state.timerIds.clear();
+  state.tipTimer = null;
+  state.hintTimer = null;
+  state.hintCells = [];
+  moveAnimator.cancelAll();
+  dragInput.reset();
+  dialogs.closeAll();
+  state.drag = null;
+  state.pendingRevert = null;
+  cancelSelection();
+  const tip = tipEl();
+  if (tip) tip.textContent = '';
+}
 
 // ---- 单元格 pitch 测量（A6）----
 function measurePitch() {
@@ -51,12 +116,12 @@ function measurePitch() {
   if (cells.length < 2) return state.pitch;
   const a = cells[0].getBoundingClientRect();
   const b = cells[1].getBoundingClientRect();
-  // 同行第二格：横向间距；若不相邻（换行）则取纵向
   if (Math.abs(a.top - b.top) < 2) {
     state.pitch = Math.round(b.left - a.left);
   } else {
-    // 取单格宽 + gap，用 CSS 变量读
-    const cssPitch = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pitch'));
+    const cssPitch = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--pitch')
+    );
     if (!Number.isNaN(cssPitch) && cssPitch > 0) state.pitch = cssPitch;
   }
 }
@@ -65,8 +130,153 @@ window.addEventListener('resize', () => {
   window.__pitchTimer = setTimeout(measurePitch, 150);
 });
 
+// ---- 关卡与存档 ----
+function getBrowserStorage() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function currentProgress() {
+  return {
+    version: 1,
+    currentLevel: state.currentLevel,
+    highestUnlocked: state.highestUnlocked,
+    levelSeed: state.currentLevel >= 6 ? state.levelSeed : null,
+  };
+}
+
+function persistProgress() {
+  const result = saveProgress(state.storage, currentProgress());
+  state.storageAvailable = result.ok;
+  if (!result.ok) showTip('本次进度无法保存');
+  return result;
+}
+
+function updateLevelControls() {
+  if (levelEl()) levelEl().textContent = String(state.currentLevel);
+  const hintButton = document.getElementById('hintBtn');
+  const shuffleButton = document.getElementById('shuffleBtn');
+  if (!state.levelSession) {
+    if (hintButton) hintButton.disabled = true;
+    if (shuffleButton) shuffleButton.disabled = true;
+    return;
+  }
+
+  const snapshot = state.levelSession.snapshot();
+  hintCountEl().textContent = String(snapshot.hintsRemaining);
+  reshuffleCountEl().textContent = String(snapshot.reshufflesRemaining);
+  hintButton.disabled = state.busy || state.phase !== 'playing' || snapshot.hintsRemaining === 0;
+  shuffleButton.disabled = state.busy || state.phase !== 'playing' || snapshot.reshufflesRemaining === 0;
+  toolAvailabilityEl().textContent =
+    `提示剩余 ${snapshot.hintsRemaining} 次，重排剩余 ${snapshot.reshufflesRemaining} 次`;
+}
+
+function activateLevel(config, board) {
+  state.currentLevel = config.levelNumber;
+  state.highestUnlocked = config.levelNumber;
+  state.levelSeed = config.levelNumber >= 6 ? config.seed : null;
+  state.levelConfig = config;
+  state.board = board;
+  state.reshuffleNonce = 0;
+  state.levelSession = createLevelSession({
+    progress: currentProgress(),
+    config,
+    createNextSeed: () => createRandomSeed(),
+  });
+  state.phase = 'playing';
+  renderBoard();
+  setBusy(false);
+  persistProgress();
+}
+
+function loadLevel(levelNumber, seed, { allowReplacement = true } = {}) {
+  const sessionId = ++state.levelSessionId;
+  clearLevelAsync();
+  state.phase = 'loading';
+  state.levelSession = null;
+  state.currentLevel = levelNumber;
+  state.highestUnlocked = levelNumber;
+  state.levelSeed = levelNumber >= 6 ? seed : null;
+  state.busy = true;
+
+  let config;
+  try {
+    config = getLevelConfig(levelNumber, { randomSeed: seed });
+  } catch (error) {
+    if (levelNumber !== 1) {
+      loadLevel(1, null);
+      return;
+    }
+    throw error;
+  }
+
+  state.levelConfig = config;
+  const result = createBoard({
+    iconIndices: config.iconIndices,
+    rng: createSeededRng(config.seed),
+  });
+  if (!result.ok) {
+    void handleBoardGenerationFailure(sessionId, config, allowReplacement);
+    return;
+  }
+
+  activateLevel(config, result.board);
+}
+
+async function handleBoardGenerationFailure(sessionId, config, allowReplacement) {
+  if (!sessionStillCurrent(sessionId)) return;
+
+  if (config.levelNumber >= 6 && allowReplacement) {
+    const replacementSeed = createRandomSeed();
+    state.currentLevel = config.levelNumber;
+    state.highestUnlocked = config.levelNumber;
+    state.levelSeed = replacementSeed;
+    persistProgress();
+    const replacementConfig = getLevelConfig(config.levelNumber, {
+      randomSeed: replacementSeed,
+    });
+    const replacement = createBoard({
+      iconIndices: replacementConfig.iconIndices,
+      rng: createSeededRng(replacementSeed),
+    });
+    if (replacement.ok) {
+      activateLevel(replacementConfig, replacement.board);
+      return;
+    }
+  }
+
+  state.phase = 'failed';
+  state.busy = true;
+  const action = await dialogs.showFailure({
+    title: '关卡生成失败',
+    description: config.levelNumber >= 6 ? '请重新生成本关。' : '请重试本关。',
+    actionLabel: config.levelNumber >= 6 ? '重新生成本关' : '重试本关',
+  });
+  if (!sessionStillCurrent(sessionId) || action !== 'retry') return;
+
+  if (config.levelNumber < 6) {
+    loadLevel(config.levelNumber, null, { allowReplacement: false });
+    return;
+  }
+
+  const regeneratedSeed = createRandomSeed();
+  state.currentLevel = config.levelNumber;
+  state.highestUnlocked = config.levelNumber;
+  state.levelSeed = regeneratedSeed;
+  persistProgress();
+  loadLevel(config.levelNumber, regeneratedSeed, { allowReplacement: false });
+}
+
+function retryCurrentLevel() {
+  loadLevel(state.currentLevel, state.levelSeed);
+}
+
 // ---- 渲染 ----
 function renderBoard() {
+  clearHintHighlight();
   moveAnimator.cancelAll();
   dragInput.reset();
   state.drag = null;
@@ -84,7 +294,9 @@ function renderBoard() {
       if (v === null) {
         cell.classList.add('empty');
       } else {
-        cell.innerHTML = ICONS[ICON_NAMES[v]];
+        const iconName = ICON_NAMES[v];
+        cell.innerHTML = ICONS[iconName];
+        cell.dataset.rendered = iconName;
       }
       el.appendChild(cell);
       rowArr.push(cell);
@@ -106,13 +318,13 @@ function syncDOM() {
           el.classList.add('empty');
           el.innerHTML = '';
         }
-        delete el.dataset.rendered; // 否则下次回填同图标时 syncDOM 会跳过 innerHTML 更新
+        delete el.dataset.rendered;
       } else {
         if (el.classList.contains('empty')) el.classList.remove('empty');
-        const want = ICONS[ICON_NAMES[v]];
-        if (el.dataset.rendered !== ICON_NAMES[v]) {
-          el.innerHTML = want;
-          el.dataset.rendered = ICON_NAMES[v];
+        const iconName = ICON_NAMES[v];
+        if (el.dataset.rendered !== iconName) {
+          el.innerHTML = ICONS[iconName];
+          el.dataset.rendered = iconName;
         }
       }
     }
@@ -121,20 +333,15 @@ function syncDOM() {
 
 // ---- 点击交互 ----
 function onCellClick(r, c) {
-  if (state.busy) return;
+  if (state.busy || state.phase !== 'playing') return;
   if (state.board[r][c] === null) return;
   clearTip();
 
-  // waiting 状态：点候选 → 消除（清 pendingRevert）
   if (state.mode === 'waiting' && state.candidates.some(p => p.r === r && p.c === c)) {
     commitPendingAndEliminate(r, c);
     return;
   }
-  // waiting 状态：点非候选 → 先回滚推动（A3），再处理新选择
-  if (state.mode === 'waiting' && state.pendingRevert) {
-    rollbackPending();
-  }
-  // 点 anchor 自身 → 取消
+  if (state.mode === 'waiting' && state.pendingRevert) rollbackPending();
   if (state.mode !== 'idle' && state.anchor && state.anchor.r === r && state.anchor.c === c) {
     cancelSelection();
     return;
@@ -147,17 +354,17 @@ function selectAndEvaluate(r, c) {
   const el = state.cellEls[r][c];
   const targets = findTargets(state.board, r, c);
   if (targets.length === 1) {
-    // 单目标：等待 hint 学习窗口后再消除（A8 协同）
     const t = targets[0];
     el.classList.add('selected');
     state.anchor = { r, c, el };
     state.mode = 'selected';
-    setBusy(true); // 保护 220ms 窗口，防止用户再次点击导致状态混乱
-    setTimeout(() => {
-      if (state.anchor && state.anchor.r === r && state.anchor.c === c) {
+    setBusy(true);
+    scheduleForSession(() => {
+      const remainsSelected = state.anchor && state.anchor.r === r && state.anchor.c === c;
+      setBusy(false);
+      if (remainsSelected) {
         eliminate({ r, c, el }, { r: t.r, c: t.c, el: state.cellEls[t.r][t.c] });
       }
-      setBusy(false); // 无论是否消除，都解除 busy
     }, 220);
   } else if (targets.length >= 2) {
     state.mode = 'waiting';
@@ -171,7 +378,7 @@ function selectAndEvaluate(r, c) {
 }
 
 function commitPendingAndEliminate(r, c) {
-  state.pendingRevert = null; // 提交，不再回滚
+  state.pendingRevert = null;
   eliminate(state.anchor, { r, c, el: state.cellEls[r][c] });
 }
 
@@ -187,12 +394,11 @@ function rollbackPending() {
 function eliminate(a, b) {
   state.board[a.r][a.c] = null;
   state.board[b.r][b.c] = null;
-  // 短暂震惊脸再消失（A8 表情动画）
   [a, b].forEach(p => {
     const svg = p.el.querySelector('svg.veg');
     if (svg) p.el.innerHTML = withFace(svg.outerHTML, 'shock');
   });
-  setTimeout(() => {
+  scheduleForSession(() => {
     [a, b].forEach(p => {
       p.el.classList.remove('selected', 'hint');
       p.el.classList.add('empty');
@@ -212,51 +418,79 @@ function cancelSelection() {
   state.mode = 'idle';
 }
 
-function shakeSameEmoji(v) {
+function shakeSameEmoji(value) {
   const targets = [];
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
-      if (state.board[r][c] === v) targets.push(state.cellEls[r][c]);
+      if (state.board[r][c] === value) targets.push(state.cellEls[r][c]);
   if (!targets.length) return;
   targets.forEach(el => {
     el.classList.remove('shake');
     void el.offsetWidth;
     el.classList.add('shake');
   });
-  setTimeout(() => targets.forEach(el => el.classList.remove('shake')), 580);
+  scheduleForSession(() => targets.forEach(el => el.classList.remove('shake')), 580);
 }
 
-// ---- hint（A8）----
+// ---- 提示与资源 ----
 function hint() {
-  if (state.busy) return;
+  if (state.busy || state.phase !== 'playing' || state.mode !== 'idle') return;
   clearTip();
   const pair = findSolvablePair(state.board);
-  if (!pair) {
-    showTip('当前盘面无可消除对');
+  const outcome = state.levelSession.useHint({ pairAvailable: Boolean(pair) });
+  if (outcome.action === 'deadlock') {
+    void handleDeadlock();
     return;
   }
+  if (outcome.action !== 'highlight-pair') return;
+
+  clearHintHighlight();
+  updateLevelControls();
   const e1 = state.cellEls[pair.r1][pair.c1];
   const e2 = state.cellEls[pair.r2][pair.c2];
-  e1.classList.add('hint');
-  e2.classList.add('hint');
-  clearTimeout(state.hintTimer);
-  state.hintTimer = setTimeout(() => {
-    e1.classList.remove('hint');
-    e2.classList.remove('hint');
-  }, 2000);
+  state.hintCells = [e1, e2];
+  state.hintCells.forEach(el => el.classList.add('hint'));
+  state.hintTimer = scheduleForSession(clearHintHighlight, 2000);
 }
 
-// ---- afterEliminate：胜利 / 死局 ----
+function tryReshuffle() {
+  const seed = (
+    state.levelConfig.seed ^
+    Math.imul(++state.reshuffleNonce, 0x9e3779b9)
+  ) >>> 0;
+  const result = reshuffleInPlace(state.board, createSeededRng(seed));
+  const outcome = state.levelSession.useReshuffle({ success: result.ok });
+  if (!result.ok) {
+    void showCurrentGenerationFailure();
+    return false;
+  }
+  if (outcome.action !== 'reshuffled') return false;
+  renderBoard();
+  updateLevelControls();
+  showTip('已重新洗牌');
+  return true;
+}
+
+async function showCurrentGenerationFailure() {
+  const sessionId = state.levelSessionId;
+  state.phase = 'failed';
+  setBusy(true);
+  const action = await dialogs.showFailure({
+    title: '重排失败',
+    description: '未能生成可继续的盘面，请重试本关。',
+    actionLabel: '重试本关',
+  });
+  if (!sessionStillCurrent(sessionId) || action !== 'retry') return;
+  retryCurrentLevel();
+}
+
+// ---- 过关与死局 ----
 function afterEliminate() {
   if (isAllCleared()) {
-    setBusy(true);
-    const w = showWin({ onClose: () => setBusy(false) });
-    w.onRestart(() => { restart(); });
+    void completeCurrentLevel();
     return;
   }
-  if (!hasAnySolvablePair(state.board)) {
-    handleDeadlock();
-  }
+  if (!hasAnySolvablePair(state.board)) void handleDeadlock();
 }
 
 function isAllCleared() {
@@ -266,67 +500,93 @@ function isAllCleared() {
   return true;
 }
 
-// ---- 死局处理（A2 + 状态机）----
-async function handleDeadlock() {
+async function completeCurrentLevel() {
+  const sessionId = state.levelSessionId;
+  const completedLevel = state.currentLevel;
+  const resources = state.levelSession.snapshot();
+  const completion = state.levelSession.complete();
+  if (completion.action !== 'level-complete') return;
+
+  state.currentLevel = completion.progress.currentLevel;
+  state.highestUnlocked = completion.progress.highestUnlocked;
+  state.levelSeed = completion.progress.levelSeed;
+  state.phase = 'level-complete';
   setBusy(true);
-  if (state.deadlockCount === 0) {
-    const choice = await showDeadlock();
-    if (choice === 'reshuffle') {
-      state.deadlockCount++;
-      reshuffleInPlace(state.board);
-      renderBoard();
-      showTip('已重排，继续加油');
-      setBusy(false);
-    } else {
-      restart();
-    }
-  } else {
-    await showGameOver(state.deadlockCount + 1);
-    restart();
-  }
+  levelEl().textContent = String(completedLevel);
+  persistProgress();
+
+  const nextConfig = getLevelConfig(state.currentLevel, { randomSeed: state.levelSeed });
+  const unlockedIconSvg = nextConfig.unlockedIconIndex === null
+    ? ''
+    : ICONS[ICON_NAMES[nextConfig.unlockedIconIndex]];
+  const action = await dialogs.showLevelComplete({
+    levelNumber: completedLevel,
+    nextLevelNumber: state.currentLevel,
+    hintsRemaining: resources.hintsRemaining,
+    reshufflesRemaining: resources.reshufflesRemaining,
+    unlockedIconSvg,
+  });
+  if (!sessionStillCurrent(sessionId) || action !== 'next') return;
+  loadLevel(state.currentLevel, state.levelSeed);
 }
 
-// ---- 重开 ----
-function restart() {
-  state.board = createBoard();
-  state.deadlockCount = 0;
-  state.round++;
-  if (roundEl()) roundEl().textContent = String(state.round);
-  state.pendingRevert = null;
-  cancelSelection();
-  renderBoard();
-  setBusy(false);
+async function handleDeadlock() {
+  if (state.busy || state.phase !== 'playing') return;
+  const sessionId = state.levelSessionId;
+  const outcome = state.levelSession.deadlock();
+  setBusy(true);
+
+  if (outcome.action === 'offer-reshuffle') {
+    const choice = await dialogs.showDeadlock();
+    if (!sessionStillCurrent(sessionId) || choice === 'cancelled') return;
+    setBusy(false);
+    if (choice === 'retry') retryCurrentLevel();
+    else tryReshuffle();
+    return;
+  }
+
+  state.phase = 'failed';
+  const action = await dialogs.showFailure({
+    title: '本关失败',
+    description: '重排次数已用尽，请重试本关。',
+    actionLabel: '重试本关',
+  });
+  if (!sessionStillCurrent(sessionId) || action !== 'retry') return;
+  retryCurrentLevel();
 }
 
 // ---- 提示文字 ----
-let tipTimer = null;
-function showTip(msg) {
+function showTip(message) {
   const el = tipEl();
   if (!el) return;
-  el.textContent = msg;
-  clearTimeout(tipTimer);
-  tipTimer = setTimeout(() => { el.textContent = ''; }, 2500);
+  el.textContent = message;
+  clearTrackedTimer(state.tipTimer);
+  state.tipTimer = scheduleForSession(() => {
+    el.textContent = '';
+    state.tipTimer = null;
+  }, 2500);
 }
+
 function clearTip() {
-  if (tipTimer) { clearTimeout(tipTimer); tipTimer = null; }
+  clearTrackedTimer(state.tipTimer);
+  state.tipTimer = null;
   const el = tipEl();
   if (el) el.textContent = '';
 }
 
-// ---- 拖拽（Task 7 实现）----
+// ---- 拖拽 ----
 function pointerXY(e) {
   return { x: e.clientX, y: e.clientY };
 }
 
-function cellFromTarget(t) {
-  const el = t.closest && t.closest('.cell');
+function cellFromTarget(target) {
+  const el = target.closest && target.closest('.cell');
   if (!el || el.classList.contains('empty')) return null;
   return { r: +el.dataset.r, c: +el.dataset.c, el };
 }
 
-// A5：Pointer Events 锁定一次拖拽的活动指针
 function onPointerDown(e) {
-  if (state.busy || state.drag) return;
+  if (state.busy || state.phase !== 'playing' || state.drag) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   if (!dragInput.begin(e.pointerId)) return;
 
@@ -340,8 +600,6 @@ function onPointerDown(e) {
     return;
   }
 
-  // 若点击 waiting 候选方块 → 不回滚，让 onCellClick 走 commit 路径
-  // 否则（点 anchor 自身/点其它方块/开始新拖拽）有未决推动则先回滚
   const isCandidateClick = state.mode === 'waiting' &&
     state.candidates.some(p => p.r === cell.r && p.c === cell.c);
   if (state.pendingRevert && !isCandidateClick) {
@@ -368,7 +626,6 @@ function onPointerDown(e) {
 
 function onPointerMove(e) {
   if (!state.drag || !dragInput.owns(e.pointerId)) return;
-  // A5：drag 进行中始终阻止默认（防页面滚动）
   if (e.cancelable) e.preventDefault();
   const { x, y } = pointerXY(e);
   const dx = x - state.drag.startX;
@@ -398,7 +655,7 @@ function onPointerMove(e) {
     threshold: DRAG_THRESHOLD,
     lastShift: state.drag.lastShift,
     blockedDirection: state.drag.blockedDirection,
-    applyShift: (delta) => applyShift(
+    applyShift: delta => applyShift(
       state.board,
       state.drag.curR,
       state.drag.curC,
@@ -426,7 +683,6 @@ function onPointerMove(e) {
   );
 
   if (result.constrained) {
-    // A4：边界或链外方块阻挡时，仅保留少量视觉阻力
     const now = Date.now();
     if (now - state.drag.blockedHintAt > 200) {
       state.drag.blockedHintAt = now;
@@ -471,23 +727,28 @@ function onPointerUp(e) {
 
   if (targets.length === 1) {
     moveAnimator.settleFollow(snapDuration);
-    const t = targets[0];
+    const target = targets[0];
     eliminate(
       { r: info.curR, c: info.curC, el: state.cellEls[info.curR][info.curC] },
-      { r: t.r, c: t.c, el: state.cellEls[t.r][t.c] }
+      { r: target.r, c: target.c, el: state.cellEls[target.r][target.c] },
     );
   } else {
-    // A3：多目标 → 进入 waiting，保留 pendingRevert 以便玩家取消时回滚
     state.mode = 'waiting';
     const el = state.cellEls[info.curR][info.curC];
     state.anchor = { r: info.curR, c: info.curC, el };
     el.classList.add('selected');
-    state.candidates = targets.map(t => ({ r: t.r, c: t.c, el: state.cellEls[t.r][t.c] }));
-    state.candidates.forEach(p => p.el.classList.add('hint'));
+    state.candidates = targets.map(target => ({
+      r: target.r,
+      c: target.c,
+      el: state.cellEls[target.r][target.c],
+    }));
+    state.candidates.forEach(candidate => candidate.el.classList.add('hint'));
     const pendingRevert = { snapshot: info.snapshot, revertMoves };
     state.pendingRevert = pendingRevert;
+    const sessionId = state.levelSessionId;
     if (snapDuration > 0) setBusy(true);
     moveAnimator.settleFollow(snapDuration, () => {
+      if (!sessionStillCurrent(sessionId)) return;
       if (state.pendingRevert === pendingRevert) setBusy(false);
     });
     showTip('多目标，请点击要消除的方块（点空白取消并还原）');
@@ -511,7 +772,7 @@ function onPointerCancel(e) {
   cancelSelection();
 }
 
-// ---- 动画（FLIP + state.pitch，Task 8 实现）----
+// ---- 动画（FLIP + 动态 pitch）----
 function animateMoves(moves, duration, { x = 0, y = 0 } = {}) {
   moveAnimator.animate(moves, motionDuration(duration), {
     offsetX: x,
@@ -521,22 +782,20 @@ function animateMoves(moves, duration, { x = 0, y = 0 } = {}) {
 
 // ---- 启动 ----
 export function initGame() {
-  state.board = createBoard();
-  renderBoard();
+  state.storage = getBrowserStorage();
+  const stored = loadProgress(state.storage);
+  const progress = stored.ok ? stored.value : createDefaultProgress();
+  loadLevel(progress.currentLevel, progress.levelSeed);
+  if (!stored.ok) showTip('进度读取失败，已从第 1 关开始');
 
   document.getElementById('hintBtn').addEventListener('click', hint);
   document.getElementById('shuffleBtn').addEventListener('click', () => {
-    if (state.busy) return;
-    reshuffleInPlace(state.board);
-    renderBoard();
-    showTip('已重新洗牌');
+    if (!state.busy && state.phase === 'playing') tryReshuffle();
   });
   document.getElementById('restartBtn').addEventListener('click', () => {
-    if (state.busy) return;
-    restart();
+    if (!state.busy && state.phase === 'playing') retryCurrentLevel();
   });
 
-  // 棋盘事件代理
   const be = boardEl();
   be.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove, { passive: false });
