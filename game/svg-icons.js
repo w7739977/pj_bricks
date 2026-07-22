@@ -11,6 +11,13 @@ export const ICON_NAMES = [
   'banana', 'orange', 'pear', 'cherry', 'peach', 'watermelon',
 ];
 
+export const ICON_LABELS = Object.freeze({
+  broccoli: '西兰花', lettuce: '生菜', tomato: '番茄', carrot: '胡萝卜', corn: '玉米',
+  eggplant: '茄子', onion: '洋葱', potato: '土豆', cucumber: '黄瓜', pepper: '青椒',
+  pumpkin: '南瓜', grape: '葡萄', apple: '苹果', strawberry: '草莓',
+  banana: '香蕉', orange: '橙子', pear: '梨', cherry: '樱桃', peach: '桃子', watermelon: '西瓜',
+});
+
 export const ICONS = {
   broccoli: S('broccoli', `
     <path d="M27 33 25 55h14l-3-22Z" fill="#8CCB4F"/>

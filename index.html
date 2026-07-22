@@ -46,12 +46,12 @@
   </main>
 
   <nav class="controls" aria-label="工具">
-    <button class="tool tool--hint" id="hintBtn" type="button" aria-label="提示">
+    <button class="tool tool--hint" id="hintBtn" type="button" aria-label="提示，剩余 3 次" aria-describedby="toolAvailability">
       <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M10 14a6 6 0 1 1 12 0c0 3-2 4-3 6h-6c-1-2-3-3-3-6Z"/><path d="M13 24h6M14 28h4"/></svg>
       <span>提示</span>
       <span class="tool__badge" id="hintCount" aria-hidden="true">3</span>
     </button>
-    <button class="tool tool--shuffle" id="shuffleBtn" type="button" aria-label="手动重排">
+    <button class="tool tool--shuffle" id="shuffleBtn" type="button" aria-label="手动重排，剩余 3 次" aria-describedby="toolAvailability">
       <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 9h5c6 0 7 14 13 14h4"/><path d="m23 19 4 4-4 4M5 23h5c2 0 3-2 4-4M20 9h7M23 5l4 4-4 4"/></svg>
       <span>重排</span>
       <span class="tool__badge" id="reshuffleCount" aria-hidden="true">3</span>
@@ -64,7 +64,7 @@
   <p id="toolAvailability" class="sr-only" aria-live="polite"></p>
 
   <!-- 关卡完成弹框 -->
-  <dialog id="completeDialog" class="dialog dialog--complete">
+  <dialog id="completeDialog" class="dialog dialog--complete" aria-labelledby="completeTitle">
     <div class="dialog__card">
       <div class="dialog__unlock" id="completeUnlock" hidden></div>
       <h2 class="dialog__title" id="completeTitle">关卡完成！</h2>
@@ -77,9 +77,9 @@
   </dialog>
 
   <!-- 死局弹框 -->
-  <dialog id="deadlockDialog" class="dialog dialog--deadlock">
+  <dialog id="deadlockDialog" class="dialog dialog--deadlock" aria-labelledby="deadlockTitle">
     <div class="dialog__card">
-      <h2 class="dialog__title">陷入死局</h2>
+      <h2 class="dialog__title" id="deadlockTitle">陷入死局</h2>
       <p class="dialog__desc">当前盘面已无可消除对。</p>
       <div class="dialog__actions">
         <button class="tool tool--secondary" data-deadlock-retry type="button">重试本关</button>
@@ -89,7 +89,7 @@
   </dialog>
 
   <!-- 失败或生成错误弹框 -->
-  <dialog id="failureDialog" class="dialog dialog--failure">
+  <dialog id="failureDialog" class="dialog dialog--failure" aria-labelledby="failureTitle">
     <div class="dialog__card">
       <h2 class="dialog__title" id="failureTitle">本关失败</h2>
       <p class="dialog__desc" id="failureDesc"></p>

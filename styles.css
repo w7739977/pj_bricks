@@ -316,7 +316,14 @@ body {
   color: #5D4A30;
   font-weight: 800;
 }
-.dialog__unlock { margin-bottom: 10px; }
+.dialog__unlock {
+  margin-bottom: 10px;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: #5D4A30;
+  font-weight: 800;
+}
 .dialog__unlock .veg { width: 58px; height: 58px; }
 .dialog__actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .dialog__actions .tool { min-width: 112px; }

@@ -122,6 +122,38 @@ test('reopening a dialog cancels the prior session and keeps one listener set', 
   assert.equal(await second, 'retry');
 });
 
+test('native close settles each dialog with its safe default action', async () => {
+  const timeout = new Promise(resolve => setTimeout(() => resolve('unsettled'), 20));
+
+  const completionFixture = fixture();
+  const completion = completionFixture.manager.showLevelComplete({
+    levelNumber: 1,
+    nextLevelNumber: 2,
+    hintsRemaining: 0,
+    reshufflesRemaining: 0,
+    unlockedIconSvg: '',
+  });
+  completionFixture.elements.get('completeDialog').open = false;
+  completionFixture.elements.get('completeDialog').dispatch('close');
+  assert.equal(await Promise.race([completion, timeout]), 'next');
+
+  const deadlockFixture = fixture();
+  const deadlock = deadlockFixture.manager.showDeadlock();
+  deadlockFixture.elements.get('deadlockDialog').open = false;
+  deadlockFixture.elements.get('deadlockDialog').dispatch('close');
+  assert.equal(await Promise.race([deadlock, timeout]), 'retry');
+
+  const failureFixture = fixture();
+  const failure = failureFixture.manager.showFailure({
+    title: '失败',
+    description: '请重试',
+    actionLabel: '重试',
+  });
+  failureFixture.elements.get('failureDialog').open = false;
+  failureFixture.elements.get('failureDialog').dispatch('close');
+  assert.equal(await Promise.race([failure, timeout]), 'retry');
+});
+
 test('dialog manager writes completion and failure content', async () => {
   const { elements, manager } = fixture();
   const completion = manager.showLevelComplete({
@@ -130,11 +162,14 @@ test('dialog manager writes completion and failure content', async () => {
     hintsRemaining: 1,
     reshufflesRemaining: 0,
     unlockedIconSvg: '<svg></svg>',
+    unlockedIconName: '樱桃',
   });
 
   assert.equal(elements.get('completeTitle').textContent, '第 4 关完成！');
+  assert.match(elements.get('completeDesc').textContent, /樱桃/);
   assert.match(elements.get('completeSummary').textContent, /提示剩余 1/);
   assert.equal(elements.get('completeUnlock').hidden, false);
+  assert.match(elements.get('completeUnlock').innerHTML, /樱桃/);
   manager.closeAll();
   assert.equal(await completion, 'cancelled');
 

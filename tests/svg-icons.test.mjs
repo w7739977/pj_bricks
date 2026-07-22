@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ICON_NAMES, ICONS } from '../game/svg-icons.js';
+import { ICON_LABELS, ICON_NAMES, ICONS } from '../game/svg-icons.js';
 
 const NEW_FRUITS = ['banana', 'orange', 'pear', 'cherry', 'peach', 'watermelon'];
 
@@ -23,4 +23,11 @@ test('new fruit names occupy indices fourteen through nineteen', () => {
   NEW_FRUITS.forEach((name, offset) => {
     assert.equal(ICON_NAMES[14 + offset], name);
   });
+});
+
+test('new fruits provide Chinese labels for the unlock dialog', () => {
+  assert.deepEqual(
+    NEW_FRUITS.map(name => ICON_LABELS[name]),
+    ['香蕉', '橙子', '梨', '樱桃', '桃子', '西瓜'],
+  );
 });

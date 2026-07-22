@@ -4,7 +4,7 @@ import {
   createShiftChain, createShiftRevertMoves, getShiftChainPositions,
   cloneBoard, restoreBoard,
 } from './board.js';
-import { ICON_NAMES, ICONS, withFace } from './svg-icons.js';
+import { ICON_LABELS, ICON_NAMES, ICONS, withFace } from './svg-icons.js';
 import { createBrowserDialogManager } from './dialogs.js';
 import { createLevelSession } from './level-session.js';
 import { createRandomSeed, createSeededRng, getLevelConfig } from './levels.js';
@@ -35,7 +35,6 @@ const state = {
   hintCells: [],
   reshuffleNonce: 0,
   storage: null,
-  storageAvailable: true,
   drag: null,
 };
 
@@ -95,17 +94,22 @@ function clearHintHighlight() {
 }
 
 function clearLevelAsync() {
+  const pointerId = state.drag?.pointerId;
+  if (pointerId !== undefined && boardEl().hasPointerCapture?.(pointerId)) {
+    boardEl().releasePointerCapture(pointerId);
+  }
+  clearHintHighlight();
   state.timerIds.forEach(clearTimeout);
   state.timerIds.clear();
   state.tipTimer = null;
-  state.hintTimer = null;
-  state.hintCells = [];
   moveAnimator.cancelAll();
   dragInput.reset();
   dialogs.closeAll();
   state.drag = null;
   state.pendingRevert = null;
   cancelSelection();
+  boardEl().innerHTML = '';
+  state.cellEls = [];
   const tip = tipEl();
   if (tip) tip.textContent = '';
 }
@@ -150,7 +154,6 @@ function currentProgress() {
 
 function persistProgress() {
   const result = saveProgress(state.storage, currentProgress());
-  state.storageAvailable = result.ok;
   if (!result.ok) showTip('本次进度无法保存');
   return result;
 }
@@ -168,8 +171,12 @@ function updateLevelControls() {
   const snapshot = state.levelSession.snapshot();
   hintCountEl().textContent = String(snapshot.hintsRemaining);
   reshuffleCountEl().textContent = String(snapshot.reshufflesRemaining);
-  hintButton.disabled = state.busy || state.phase !== 'playing' || snapshot.hintsRemaining === 0;
-  shuffleButton.disabled = state.busy || state.phase !== 'playing' || snapshot.reshufflesRemaining === 0;
+  const interactionLocked = state.busy || state.phase !== 'playing' ||
+    state.drag !== null || state.mode !== 'idle' || state.pendingRevert !== null;
+  hintButton.disabled = interactionLocked || snapshot.hintsRemaining === 0;
+  shuffleButton.disabled = interactionLocked || snapshot.reshufflesRemaining === 0;
+  hintButton.setAttribute('aria-label', `提示，剩余 ${snapshot.hintsRemaining} 次`);
+  shuffleButton.setAttribute('aria-label', `手动重排，剩余 ${snapshot.reshufflesRemaining} 次`);
   toolAvailabilityEl().textContent =
     `提示剩余 ${snapshot.hintsRemaining} 次，重排剩余 ${snapshot.reshufflesRemaining} 次`;
 }
@@ -201,6 +208,7 @@ function loadLevel(levelNumber, seed, { allowReplacement = true } = {}) {
   state.highestUnlocked = levelNumber;
   state.levelSeed = levelNumber >= 6 ? seed : null;
   state.busy = true;
+  updateLevelControls();
 
   let config;
   try {
@@ -277,6 +285,7 @@ function retryCurrentLevel() {
 // ---- 渲染 ----
 function renderBoard() {
   clearHintHighlight();
+  state.pendingRevert = null;
   moveAnimator.cancelAll();
   dragInput.reset();
   state.drag = null;
@@ -336,6 +345,7 @@ function onCellClick(r, c) {
   if (state.busy || state.phase !== 'playing') return;
   if (state.board[r][c] === null) return;
   clearTip();
+  clearHintHighlight();
 
   if (state.mode === 'waiting' && state.candidates.some(p => p.r === r && p.c === c)) {
     commitPendingAndEliminate(r, c);
@@ -372,6 +382,7 @@ function selectAndEvaluate(r, c) {
     el.classList.add('selected');
     state.candidates = targets.map(t => ({ r: t.r, c: t.c, el: state.cellEls[t.r][t.c] }));
     state.candidates.forEach(p => p.el.classList.add('hint'));
+    updateLevelControls();
   } else {
     shakeSameEmoji(state.board[r][c]);
   }
@@ -389,11 +400,13 @@ function rollbackPending() {
   syncDOM();
   animateMoves(revertMoves, 180);
   state.pendingRevert = null;
+  updateLevelControls();
 }
 
 function eliminate(a, b) {
   state.board[a.r][a.c] = null;
   state.board[b.r][b.c] = null;
+  setBusy(true);
   [a, b].forEach(p => {
     const svg = p.el.querySelector('svg.veg');
     if (svg) p.el.innerHTML = withFace(svg.outerHTML, 'shock');
@@ -405,9 +418,10 @@ function eliminate(a, b) {
       p.el.innerHTML = '';
       delete p.el.dataset.rendered;
     });
-  }, 180);
+    setBusy(false);
+    afterEliminate();
+  }, motionDuration(180));
   cancelSelection();
-  afterEliminate();
 }
 
 function cancelSelection() {
@@ -416,6 +430,7 @@ function cancelSelection() {
   state.anchor = null;
   state.candidates = [];
   state.mode = 'idle';
+  updateLevelControls();
 }
 
 function shakeSameEmoji(value) {
@@ -454,6 +469,13 @@ function hint() {
 }
 
 function tryReshuffle() {
+  const snapshot = state.levelSession?.snapshot();
+  if (state.busy || state.phase !== 'playing' || state.drag ||
+      state.mode !== 'idle' || state.pendingRevert ||
+      !snapshot || snapshot.reshufflesRemaining === 0) {
+    return false;
+  }
+
   const seed = (
     state.levelConfig.seed ^
     Math.imul(++state.reshuffleNonce, 0x9e3779b9)
@@ -516,15 +538,18 @@ async function completeCurrentLevel() {
   persistProgress();
 
   const nextConfig = getLevelConfig(state.currentLevel, { randomSeed: state.levelSeed });
-  const unlockedIconSvg = nextConfig.unlockedIconIndex === null
-    ? ''
-    : ICONS[ICON_NAMES[nextConfig.unlockedIconIndex]];
+  const unlockedIconKey = nextConfig.unlockedIconIndex === null
+    ? null
+    : ICON_NAMES[nextConfig.unlockedIconIndex];
+  const unlockedIconSvg = unlockedIconKey ? ICONS[unlockedIconKey] : '';
+  const unlockedIconName = unlockedIconKey ? ICON_LABELS[unlockedIconKey] : '';
   const action = await dialogs.showLevelComplete({
     levelNumber: completedLevel,
     nextLevelNumber: state.currentLevel,
     hintsRemaining: resources.hintsRemaining,
     reshufflesRemaining: resources.reshufflesRemaining,
     unlockedIconSvg,
+    unlockedIconName,
   });
   if (!sessionStillCurrent(sessionId) || action !== 'next') return;
   loadLevel(state.currentLevel, state.levelSeed);
@@ -590,7 +615,7 @@ function onPointerDown(e) {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   if (!dragInput.begin(e.pointerId)) return;
 
-  const cell = cellFromTarget(e.target);
+  let cell = cellFromTarget(e.target);
   if (!cell) {
     dragInput.release(e.pointerId);
     if (state.pendingRevert) {
@@ -600,14 +625,21 @@ function onPointerDown(e) {
     return;
   }
 
+  clearHintHighlight();
   const isCandidateClick = state.mode === 'waiting' &&
     state.candidates.some(p => p.r === cell.r && p.c === cell.c);
   if (state.pendingRevert && !isCandidateClick) {
     rollbackPending();
     cancelSelection();
+    cell = cellFromTarget(e.target);
+    if (!cell) {
+      dragInput.release(e.pointerId);
+      return;
+    }
   }
   const { x, y } = pointerXY(e);
   state.drag = {
+    pointerId: e.pointerId,
     r: cell.r, c: cell.c,
     startX: x, startY: y,
     axis: null,
@@ -622,6 +654,7 @@ function onPointerDown(e) {
     blockedHintAt: 0,
   };
   boardEl().setPointerCapture(e.pointerId);
+  updateLevelControls();
 }
 
 function onPointerMove(e) {
@@ -703,6 +736,7 @@ function onPointerUp(e) {
     visualOffset: state.drag.visualOffset,
   };
   state.drag = null;
+  updateLevelControls();
 
   if (!wasDrag) {
     onCellClick(info.r, info.c);
@@ -745,6 +779,7 @@ function onPointerUp(e) {
     state.candidates.forEach(candidate => candidate.el.classList.add('hint'));
     const pendingRevert = { snapshot: info.snapshot, revertMoves };
     state.pendingRevert = pendingRevert;
+    updateLevelControls();
     const sessionId = state.levelSessionId;
     if (snapDuration > 0) setBusy(true);
     moveAnimator.settleFollow(snapDuration, () => {
@@ -759,6 +794,7 @@ function onPointerCancel(e) {
   if (!state.drag || !dragInput.release(e.pointerId)) return;
   const info = state.drag;
   state.drag = null;
+  updateLevelControls();
   if (!info.dragged) return;
   if (!info.moved) {
     moveAnimator.settleFollow(motionDuration(SNAP_DURATION));

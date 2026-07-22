@@ -7,7 +7,7 @@ export function createDialogManager({ getDialog }) {
     active.get(id)?.cancel();
   }
 
-  function open(id, install) {
+  function open(id, closeValue, install) {
     closeSession(id);
     const dialog = getDialog(id);
     return new Promise((resolve) => {
@@ -28,6 +28,7 @@ export function createDialogManager({ getDialog }) {
       };
 
       listen(dialog, 'cancel', event => event.preventDefault());
+      listen(dialog, 'close', () => settle(closeValue));
       install({ dialog, listen, settle });
       active.set(id, { cancel: () => settle('cancelled') });
       dialog.showModal();
@@ -40,16 +41,18 @@ export function createDialogManager({ getDialog }) {
 
   return {
     showLevelComplete(data) {
-      return open('completeDialog', ({ dialog, listen, settle }) => {
+      return open('completeDialog', 'next', ({ dialog, listen, settle }) => {
         getDialog('completeTitle').textContent = `第 ${data.levelNumber} 关完成！`;
         getDialog('completeDesc').textContent = data.unlockedIconSvg
-          ? '新的水果图案已解锁'
+          ? `新的水果图案已解锁：${data.unlockedIconName}`
           : '继续挑战下一关';
         getDialog('completeSummary').textContent =
           `提示剩余 ${data.hintsRemaining} · 重排剩余 ${data.reshufflesRemaining}`;
         const unlock = getDialog('completeUnlock');
         unlock.hidden = !data.unlockedIconSvg;
-        unlock.innerHTML = data.unlockedIconSvg || '';
+        unlock.innerHTML = data.unlockedIconSvg
+          ? `${data.unlockedIconSvg}<span>${data.unlockedIconName}</span>`
+          : '';
         const button = dialog.querySelector('[data-complete-next]');
         button.textContent = `进入第 ${data.nextLevelNumber} 关`;
         listen(button, 'click', () => settle('next'));
@@ -57,7 +60,7 @@ export function createDialogManager({ getDialog }) {
     },
 
     showDeadlock() {
-      return open('deadlockDialog', ({ dialog, listen, settle }) => {
+      return open('deadlockDialog', 'retry', ({ dialog, listen, settle }) => {
         listen(
           dialog.querySelector('[data-deadlock-retry]'),
           'click',
@@ -72,7 +75,7 @@ export function createDialogManager({ getDialog }) {
     },
 
     showFailure({ title, description, actionLabel }) {
-      return open('failureDialog', ({ dialog, listen, settle }) => {
+      return open('failureDialog', 'retry', ({ dialog, listen, settle }) => {
         getDialog('failureTitle').textContent = title;
         getDialog('failureDesc').textContent = description;
         const button = dialog.querySelector('[data-failure-action]');
