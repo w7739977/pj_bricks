@@ -5,15 +5,70 @@ import {
   ROWS,
   COLS,
   applyShift,
+  cloneBoard,
+  createBoard,
   createShiftChain,
   createShiftRevertMoves,
   findTargets,
   getShiftChainPositions,
+  hasAnySolvablePair,
+  reshuffleInPlace,
 } from '../game/board.js';
+import { createSeededRng } from '../game/levels.js';
 
 function emptyBoard() {
   return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 }
+
+test('parameterized board uses every enabled icon in even counts', () => {
+  const result = createBoard({
+    iconIndices: Array.from({ length: 17 }, (_, i) => i),
+    rng: createSeededRng(123),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.board.length, ROWS);
+  assert.equal(result.board.flat().length, ROWS * COLS);
+  const counts = new Map();
+  result.board.flat().forEach(value => counts.set(value, (counts.get(value) || 0) + 1));
+  assert.equal(counts.size, 17);
+  assert.equal([...counts.values()].every(count => count >= 2 && count % 2 === 0), true);
+  assert.ok(Math.max(...counts.values()) - Math.min(...counts.values()) <= 2);
+});
+
+test('same seed creates the same solvable board', () => {
+  const iconIndices = Array.from({ length: 20 }, (_, i) => i);
+  const left = createBoard({ iconIndices, rng: createSeededRng(456) });
+  const right = createBoard({ iconIndices, rng: createSeededRng(456) });
+
+  assert.deepEqual(left, right);
+  assert.equal(hasAnySolvablePair(left.board), true);
+});
+
+test('different seeds can create different boards', () => {
+  const iconIndices = Array.from({ length: 20 }, (_, i) => i);
+  const left = createBoard({ iconIndices, rng: createSeededRng(456) });
+  const right = createBoard({ iconIndices, rng: createSeededRng(789) });
+
+  assert.notDeepEqual(left.board, right.board);
+});
+
+test('generation reports exhaustion', () => {
+  const result = createBoard({ iconIndices: [0, 1], rng: () => 0, maxAttempts: 0 });
+  assert.deepEqual(result, { ok: false, reason: 'no-solvable-pair' });
+});
+
+test('failed reshuffle restores the exact board', () => {
+  const board = emptyBoard();
+  board[0][0] = 1;
+  board[13][9] = 2;
+  const before = cloneBoard(board);
+
+  const result = reshuffleInPlace(board, () => 0, { maxAttempts: 2 });
+
+  assert.deepEqual(result, { ok: false, reason: 'no-solvable-pair' });
+  assert.deepEqual(board, before);
+});
 
 test('fixed-chain positions follow the selected member and initial direction', () => {
   assert.deepEqual(getShiftChainPositions(6, 2, { axis: 'col', dir: -1, length: 4 }), [

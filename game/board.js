@@ -1,39 +1,53 @@
 // 纯棋盘逻辑，无 DOM 依赖。
-// 规则：14 行 × 10 列 = 140 格；14 种蔬菜 × 10 个；消除为 0 折直线连通。
+// 规则：14 行 × 10 列 = 140 格；图案按成对分配；消除为 0 折直线连通。
 
 export const ROWS = 14;
 export const COLS = 10;
-export const KINDS = 14;     // 与 svg-icons ICON_NAMES 长度一致
-export const PER_KIND = 10;  // 140 / KINDS
+const CELL_COUNT = ROWS * COLS;
+const PAIR_COUNT = CELL_COUNT / 2;
 
-// ---- 棋盘构造 ----
-export function createBoard(rng = Math.random) {
-  let board;
-  let attempts = 0;
-  do {
-    board = buildRandomBoard(rng);
-    attempts++;
-  } while (!hasAnySolvablePair(board) && attempts < 1000);
-  return board; // string[ROWS][COLS]，null 表示空
+function validateIconIndices(iconIndices) {
+  if (!Array.isArray(iconIndices) || iconIndices.length < 1 || iconIndices.length > PAIR_COUNT) {
+    throw new RangeError('iconIndices must contain between 1 and 70 entries');
+  }
+  const allValid = iconIndices.every(value => Number.isInteger(value) && value >= 0);
+  if (!allValid || new Set(iconIndices).size !== iconIndices.length) {
+    throw new TypeError('iconIndices must contain unique non-negative integers');
+  }
 }
 
-function buildRandomBoard(rng) {
+function createPairPool(iconIndices) {
   const pool = [];
-  for (let i = 0; i < KINDS; i++)
-    for (let j = 0; j < PER_KIND; j++) pool.push(i);
-  // Fisher-Yates
-  for (let i = pool.length - 1; i > 0; i--) {
+  for (let pair = 0; pair < PAIR_COUNT; pair++) {
+    const iconIndex = iconIndices[pair % iconIndices.length];
+    pool.push(iconIndex, iconIndex);
+  }
+  return pool;
+}
+
+function shuffleInPlace(values, rng) {
+  for (let i = values.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+    [values[i], values[j]] = [values[j], values[i]];
   }
-  const board = [];
-  let k = 0;
-  for (let r = 0; r < ROWS; r++) {
-    const row = [];
-    for (let c = 0; c < COLS; c++) row.push(pool[k++]);
-    board.push(row);
+}
+
+function poolToBoard(pool) {
+  return Array.from({ length: ROWS }, (_, r) =>
+    pool.slice(r * COLS, (r + 1) * COLS)
+  );
+}
+
+// ---- 棋盘构造 ----
+export function createBoard({ iconIndices, rng = Math.random, maxAttempts = 1000 }) {
+  validateIconIndices(iconIndices);
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const pool = createPairPool(iconIndices);
+    shuffleInPlace(pool, rng);
+    const board = poolToBoard(pool);
+    if (hasAnySolvablePair(board)) return { ok: true, board };
   }
-  return board;
+  return { ok: false, reason: 'no-solvable-pair' };
 }
 
 // ---- 0 折直线连通 ----
@@ -104,24 +118,28 @@ export function hasAnySolvablePair(board) {
 }
 
 // ---- 重排（就地）----
-export function reshuffleInPlace(board, rng = Math.random) {
+export function reshuffleInPlace(board, rng = Math.random, { maxAttempts = 1000 } = {}) {
+  const snapshot = cloneBoard(board);
+  const positions = [];
   const pieces = [];
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-      if (board[r][c] !== null) pieces.push(board[r][c]);
-  let attempts = 0;
-  do {
-    for (let i = pieces.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (board[r][c] !== null) {
+        positions.push({ r, c });
+        pieces.push(board[r][c]);
+      }
     }
-    let k = 0;
-    for (let r = 0; r < ROWS; r++)
-      for (let c = 0; c < COLS; c++)
-        if (board[r][c] !== null) board[r][c] = pieces[k++];
-    attempts++;
-  } while (!hasAnySolvablePair(board) && attempts < 1000);
-  return board;
+  }
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    shuffleInPlace(pieces, rng);
+    positions.forEach(({ r, c }, i) => { board[r][c] = pieces[i]; });
+    if (hasAnySolvablePair(board)) return { ok: true };
+  }
+
+  restoreBoard(board, snapshot);
+  return { ok: false, reason: 'no-solvable-pair' };
 }
 
 // ---- 空间平移：拖拽核心 ----
