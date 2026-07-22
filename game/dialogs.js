@@ -1,61 +1,92 @@
-// 弹框管理：基于原生 <dialog>。
+// 弹框管理：基于原生 <dialog>，每次打开只保留一组活动监听。
 
-const $ = (id) => document.getElementById(id);
+export function createDialogManager({ getDialog }) {
+  const active = new Map();
 
-export function showWin({ onClose } = {}) {
-  const dlg = $('winDialog');
-  const card = dlg.querySelector('.dialog__card');
-  dlg.showModal();
-  const restartBtns = dlg.querySelectorAll('[data-win-restart]');
-  const closeBtn = dlg.querySelector('[data-close]');
-  const listeners = [];
-  const close = () => { if (dlg.open) dlg.close(); };
-  const handleClose = () => { close(); onClose && onClose(); };
-  restartBtns.forEach(btn => btn.addEventListener('click', () => {
-    close();
-    listeners.forEach(cb => cb());
-  }, { once: true }));
-  closeBtn.addEventListener('click', handleClose, { once: true });
+  function closeSession(id) {
+    active.get(id)?.cancel();
+  }
+
+  function open(id, install) {
+    closeSession(id);
+    const dialog = getDialog(id);
+    return new Promise((resolve) => {
+      let settled = false;
+      const cleanups = [];
+      const listen = (element, type, handler) => {
+        element.addEventListener(type, handler);
+        cleanups.push(() => element.removeEventListener(type, handler));
+      };
+      const cleanup = () => cleanups.splice(0).forEach(fn => fn());
+      const settle = (value) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        active.delete(id);
+        if (dialog.open) dialog.close();
+        resolve(value);
+      };
+
+      listen(dialog, 'cancel', event => event.preventDefault());
+      install({ dialog, listen, settle });
+      active.set(id, { cancel: () => settle('cancelled') });
+      dialog.showModal();
+    });
+  }
+
+  function closeAll() {
+    [...active.keys()].forEach(closeSession);
+  }
+
   return {
-    close: handleClose,
-    onRestart: (cb) => listeners.push(cb),
+    showLevelComplete(data) {
+      return open('completeDialog', ({ dialog, listen, settle }) => {
+        getDialog('completeTitle').textContent = `第 ${data.levelNumber} 关完成！`;
+        getDialog('completeDesc').textContent = data.unlockedIconSvg
+          ? '新的水果图案已解锁'
+          : '继续挑战下一关';
+        getDialog('completeSummary').textContent =
+          `提示剩余 ${data.hintsRemaining} · 重排剩余 ${data.reshufflesRemaining}`;
+        const unlock = getDialog('completeUnlock');
+        unlock.hidden = !data.unlockedIconSvg;
+        unlock.innerHTML = data.unlockedIconSvg || '';
+        const button = dialog.querySelector('[data-complete-next]');
+        button.textContent = `进入第 ${data.nextLevelNumber} 关`;
+        listen(button, 'click', () => settle('next'));
+      });
+    },
+
+    showDeadlock() {
+      return open('deadlockDialog', ({ dialog, listen, settle }) => {
+        listen(
+          dialog.querySelector('[data-deadlock-retry]'),
+          'click',
+          () => settle('retry'),
+        );
+        listen(
+          dialog.querySelector('[data-deadlock-reshuffle]'),
+          'click',
+          () => settle('reshuffle'),
+        );
+      });
+    },
+
+    showFailure({ title, description, actionLabel }) {
+      return open('failureDialog', ({ dialog, listen, settle }) => {
+        getDialog('failureTitle').textContent = title;
+        getDialog('failureDesc').textContent = description;
+        const button = dialog.querySelector('[data-failure-action]');
+        button.textContent = actionLabel;
+        listen(button, 'click', () => settle('retry'));
+      });
+    },
+
+    closeAll,
   };
 }
 
-export function showDeadlock() {
-  return new Promise((resolve) => {
-    const dlg = $('deadlockDialog');
-    const reshuffleBtn = dlg.querySelector('[data-deadlock-reshuffle]');
-    const giveupBtn = dlg.querySelector('[data-deadlock-giveup]');
-    dlg.showModal();
-    const onReshuffle = () => { dlg.close(); cleanup(); resolve('reshuffle'); };
-    const onGiveup = () => { dlg.close(); cleanup(); resolve('giveup'); };
-    const onCancel = (e) => { e.preventDefault(); /* 阻止 Esc 关闭，强制选择 */ };
-    const cleanup = () => {
-      reshuffleBtn.removeEventListener('click', onReshuffle);
-      giveupBtn.removeEventListener('click', onGiveup);
-      dlg.removeEventListener('cancel', onCancel);
-    };
-    reshuffleBtn.addEventListener('click', onReshuffle, { once: true });
-    giveupBtn.addEventListener('click', onGiveup, { once: true });
-    dlg.addEventListener('cancel', onCancel);
-  });
-}
-
-export function showGameOver(deadlockCount) {
-  return new Promise((resolve) => {
-    const dlg = $('gameOverDialog');
-    const desc = $('gameOverDesc');
-    const restartBtn = dlg.querySelector('[data-gameover-restart]');
-    if (desc) desc.textContent = `本局共出现 ${deadlockCount} 次死局`;
-    dlg.showModal();
-    const onCancel = (e) => { e.preventDefault(); };
-    const cleanup = () => {
-      dlg.removeEventListener('cancel', onCancel);
-    };
-    const onRestart = () => { dlg.close(); cleanup(); resolve(); };
-    restartBtn.addEventListener('click', onRestart, { once: true });
-    dlg.addEventListener('cancel', onCancel);
-    setTimeout(() => restartBtn.focus(), 50);
+export function createBrowserDialogManager() {
+  return createDialogManager({
+    getDialog: id => document.getElementById(id),
   });
 }
