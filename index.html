@@ -13,7 +13,7 @@
   <header class="game-header">
     <div class="topbar">
       <h1 class="title">田园连连看</h1>
-      <div class="meta" id="meta">第 <span id="round">1</span> 局</div>
+      <div class="meta" id="meta">第 <span id="level">1</span> 关</div>
     </div>
     <div class="farm-banner" aria-hidden="true">
       <svg viewBox="0 0 600 120" preserveAspectRatio="xMidYMid slice">
@@ -48,48 +48,52 @@
     <button class="tool tool--hint" id="hintBtn" type="button" aria-label="提示">
       <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M10 14a6 6 0 1 1 12 0c0 3-2 4-3 6h-6c-1-2-3-3-3-6Z"/><path d="M13 24h6M14 28h4"/></svg>
       <span>提示</span>
+      <span class="tool__badge" id="hintCount" aria-hidden="true">3</span>
     </button>
     <button class="tool tool--shuffle" id="shuffleBtn" type="button" aria-label="手动重排">
       <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 9h5c6 0 7 14 13 14h4"/><path d="m23 19 4 4-4 4M5 23h5c2 0 3-2 4-4M20 9h7M23 5l4 4-4 4"/></svg>
       <span>重排</span>
+      <span class="tool__badge" id="reshuffleCount" aria-hidden="true">3</span>
     </button>
-    <button class="tool tool--restart" id="restartBtn" type="button" aria-label="重新开始">
+    <button class="tool tool--restart" id="restartBtn" type="button" aria-label="重试本关">
       <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M24 9a10 10 0 1 0 1 12"/><path d="M24 4v6h-6"/></svg>
-      <span>重开</span>
+      <span>重试</span>
     </button>
   </nav>
+  <p id="toolAvailability" class="sr-only" aria-live="polite"></p>
 
-  <!-- 胜利弹框 -->
-  <dialog id="winDialog" class="dialog dialog--win">
+  <!-- 关卡完成弹框 -->
+  <dialog id="completeDialog" class="dialog dialog--complete">
     <div class="dialog__card">
-      <button class="dialog__close" data-close type="button" aria-label="关闭">✕</button>
-      <h2 class="dialog__title">游戏胜利！</h2>
-      <p class="dialog__desc">所有方块已消除完毕</p>
+      <div class="dialog__unlock" id="completeUnlock" hidden></div>
+      <h2 class="dialog__title" id="completeTitle">关卡完成！</h2>
+      <p class="dialog__desc" id="completeDesc"></p>
+      <div class="dialog__summary" id="completeSummary"></div>
       <div class="dialog__actions">
-        <button class="tool tool--primary" data-win-restart type="button">再来一局</button>
+        <button class="tool tool--primary" data-complete-next type="button" autofocus>下一关</button>
       </div>
     </div>
   </dialog>
 
-  <!-- 死局弹框（首次） -->
+  <!-- 死局弹框 -->
   <dialog id="deadlockDialog" class="dialog dialog--deadlock">
     <div class="dialog__card">
       <h2 class="dialog__title">陷入死局</h2>
-      <p class="dialog__desc">当前盘面已无可消除对，要怎么处理？</p>
+      <p class="dialog__desc">当前盘面已无可消除对。</p>
       <div class="dialog__actions">
-        <button class="tool tool--secondary" data-deadlock-giveup type="button">放弃本局</button>
-        <button class="tool tool--primary" data-deadlock-reshuffle type="button">重排一次</button>
+        <button class="tool tool--secondary" data-deadlock-retry type="button">重试本关</button>
+        <button class="tool tool--primary" data-deadlock-reshuffle type="button" autofocus>使用一次重排</button>
       </div>
     </div>
   </dialog>
 
-  <!-- 游戏结束弹框（二次及以后死局） -->
-  <dialog id="gameOverDialog" class="dialog dialog--gameover">
+  <!-- 失败或生成错误弹框 -->
+  <dialog id="failureDialog" class="dialog dialog--failure">
     <div class="dialog__card">
-      <h2 class="dialog__title">游戏结束</h2>
-      <p class="dialog__desc" id="gameOverDesc">本局共出现 2 次死局</p>
+      <h2 class="dialog__title" id="failureTitle">本关失败</h2>
+      <p class="dialog__desc" id="failureDesc"></p>
       <div class="dialog__actions">
-        <button class="tool tool--primary" data-gameover-restart type="button">放弃本局并重开</button>
+        <button class="tool tool--primary" data-failure-action type="button" autofocus>重试本关</button>
       </div>
     </div>
   </dialog>

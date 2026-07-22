@@ -1,4 +1,4 @@
-// 14 个高饱和手绘田园图标。统一深棕粗描边、平涂和少量内部纹理。
+// 20 个高饱和手绘田园图标。统一深棕粗描边、平涂和少量内部纹理。
 // 顺序对应 board.js 中的图案编号。
 
 const INK = '#34291D';
@@ -8,6 +8,7 @@ export const ICON_NAMES = [
   'broccoli', 'lettuce', 'tomato', 'carrot', 'corn',
   'eggplant', 'onion', 'potato', 'cucumber', 'pepper',
   'pumpkin', 'grape', 'apple', 'strawberry',
+  'banana', 'orange', 'pear', 'cherry', 'peach', 'watermelon',
 ];
 
 export const ICONS = {
@@ -81,6 +82,36 @@ export const ICONS = {
     <path d="M32 15c-12 0-18 7-14 19 4 12 10 22 14 23 5-1 12-12 15-23 3-12-3-19-15-19Z" fill="#F04A61"/>
     <path d="m18 17 6-10 5 8 5-10 4 10 9-7-3 12Z" fill="#56AA43"/>
     <g fill="#FFE35A" stroke="none"><circle cx="26" cy="29" r="2"/><circle cx="36" cy="27" r="2"/><circle cx="41" cy="35" r="2"/><circle cx="29" cy="39" r="2"/><circle cx="34" cy="48" r="2"/></g>
+  `),
+  banana: S('banana', `
+    <path d="M10 35c8 14 24 20 38 11 7-4 10-12 8-20-8 8-17 12-27 9-7-2-12-6-16-11-3 3-4 7-3 11Z" fill="#F4D54A"/>
+    <path d="M15 29c10 11 24 15 36 7" stroke="#D29B24" stroke-width="2.2"/>
+  `),
+  orange: S('orange', `
+    <circle cx="32" cy="35" r="20" fill="#F69227"/>
+    <path d="M31 15c3-8 10-11 17-8-2 7-8 10-16 9Z" fill="#5AAA43"/>
+    <path d="M19 35h26M32 22v26" stroke="#D76C1E" stroke-width="1.8"/>
+  `),
+  pear: S('pear', `
+    <path d="M35 13c2 8 12 12 13 24 1 12-6 20-17 20S13 49 16 37c2-10 12-15 13-24Z" fill="#ACD052"/>
+    <path d="M34 13c0-5 2-8 6-10"/>
+    <path d="M38 9c6-5 11-3 13 2-5 3-9 2-13-2Z" fill="#56A640"/>
+  `),
+  cherry: S('cherry', `
+    <path d="M18 36c-7 0-12 6-11 13 1 8 9 11 15 7 6 4 14 1 15-7 1-7-5-13-12-13Z" fill="#E84747"/>
+    <path d="M39 34c-7 0-12 6-11 13 1 8 9 11 15 7 6 4 14 1 15-7 1-7-5-13-12-13Z" fill="#EF5A50"/>
+    <path d="M22 36C25 20 34 13 43 10m1 24c0-9-1-17-1-24"/>
+    <path d="M40 13c-6-7-12-5-14 0 5 4 10 4 14 0Z" fill="#59A846"/>
+  `),
+  peach: S('peach', `
+    <path d="M13 35c0-14 10-23 22-23 13 0 21 10 18 24-2 13-13 21-24 19-10-2-16-9-16-20Z" fill="#F58B6A"/>
+    <path d="M34 13c-4 12-2 28 8 38" stroke="#E96B55" stroke-width="2.2"/>
+    <path d="M34 13c4-9 13-10 18-5-4 7-10 9-17 7Z" fill="#5AA844"/>
+  `),
+  watermelon: S('watermelon', `
+    <path d="M8 35c7-15 19-22 34-18 12 3 17 14 11 24-7 12-23 17-36 11C7 48 4 42 8 35Z" fill="#58AD4D"/>
+    <path d="M15 37c7-9 18-14 31-12 4 8-3 17-13 21-8 4-16 1-18-9Z" fill="#EF4C4C"/>
+    <path d="m22 36 2 1m10-5 2 1m5 6 2 1" stroke="#4F2C1F" stroke-width="2.4"/>
   `),
 };
 
