@@ -33,6 +33,13 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  /* 页面级：消灭双击缩放判定，同时不阻碍滚动 */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
 body {
   min-height: 100dvh;
   font-family: var(--font-body);
@@ -127,6 +134,10 @@ body {
   border: 5px solid var(--color-wood-light);
   border-radius: var(--radius-board);
   outline: 3px solid var(--color-wood-dark);
+  user-select: none;
+  -webkit-user-select: none;
+  /* 棋盘整体（含网格缝隙）禁止一切浏览器手势：双击缩放、捏合缩放、长按菜单 */
+  touch-action: none;
   box-shadow:
     0 7px 0 var(--color-wood-dark),
     0 11px 16px rgba(47, 66, 31, 0.35),

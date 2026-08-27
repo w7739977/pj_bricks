@@ -861,4 +861,17 @@ export function initGame() {
   window.addEventListener('pointermove', onPointerMove, { passive: false });
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerCancel);
+
+  suppressBrowserGestures(be);
+}
+
+// 语义：屏蔽棋盘区域内的浏览器手势——双击缩放、iOS 捏合缩放、长按弹出菜单
+function suppressBrowserGestures(boardElm) {
+  boardElm.addEventListener('dblclick', e => e.preventDefault());
+  // iOS Safari 专有：捏合缩放与双指手势
+  for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+    document.addEventListener(type, e => e.preventDefault());
+  }
+  // 阻止棋盘内长按触发的上下文菜单（桌面右键同理）
+  boardElm.addEventListener('contextmenu', e => e.preventDefault());
 }
