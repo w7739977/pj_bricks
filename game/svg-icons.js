@@ -58,9 +58,9 @@ const BODIES = {
    <path d="M32 20c-11 0-19 8-17 19 2 10 10 17 17 17s15-7 17-17c2-11-6-19-17-19Z" fill="#3EA245"/>
    <path d="M32 22v32m-8-31c-3 9-3 22 0 30m16-30c3 9 3 22 0 30" stroke="#237A33" stroke-width="2.8"/>`,
  pumpkin: `
-   <path d="M11 37c0-11 9-18 21-18s21 7 21 18-9 19-21 19-21-8-21-19Z" fill="#F5921E"/>
-   <path d="M22 22c-5 9-5 21 0 30m20-30c5 9 5 21 0 30M32 20v35" stroke="#D96C15" stroke-width="2.8"/>
-   <path d="M32 20c-1-6 2-10 7-11-1 5-2 8-7 11Zm-2 0c-4-3-8-2-10 1 3 2 7 2 10-1Z" fill="#6B8F37"/>`,
+   <path d="M6 38c0-12 12-19 26-19s26 7 26 19-12 20-26 20S6 50 6 38Z" fill="#EF7115"/>
+   <path d="M17 24c-6 9-6 22 0 31m30-31c6 9 6 22 0 31M32 21v35" stroke="#B84D06" stroke-width="3.2"/>
+   <path d="M32 19c-2-7 2-12 9-13-1 6-3 10-9 13Zm-3 0c-5-4-10-2-13 2 4 3 9 3 13-2Z" fill="#4F7A2B"/>`,
  grape: `
    <path d="M32 16c-2-5 0-9 5-11 1 5-1 9-5 11Zm-1-2C26 8 20 8 16 11c3 4 9 5 15 3Z" fill="#54A83E"/>
    <circle cx="21" cy="26" r="7.5" fill="#9046C2"/><circle cx="35" cy="24" r="7.5" fill="#9B4FD0"/>
@@ -80,9 +80,13 @@ const BODIES = {
    <path d="M17 31c8 9 20 13 32 7" stroke="#DBA020" stroke-width="2.6"/>
    <path d="M9 33c-1-2 0-4 2-5m43 3c2 2 2 4 1 6" stroke="#8A6338" stroke-width="3"/>`,
  orange: `
-   <circle cx="32" cy="37" r="20" fill="#FF972F"/>
-   <path d="M32 17c1-6 5-9 11-9-1 6-5 9-11 9Z" fill="#54AB41"/>
-   <path d="M22 33c1 6 4 10 8 12" stroke="#E0770E" stroke-width="2.6"/>`,
+   <circle cx="32" cy="38" r="18" fill="#FFAE33"/>
+   <circle cx="26" cy="31" r="1.7" fill="#F58208" stroke="#F58208" stroke-width="2"/>
+   <circle cx="36" cy="29" r="1.7" fill="#F58208" stroke="#F58208" stroke-width="2"/>
+   <circle cx="41" cy="38" r="1.7" fill="#F58208" stroke="#F58208" stroke-width="2"/>
+   <circle cx="23" cy="40" r="1.7" fill="#F58208" stroke="#F58208" stroke-width="2"/>
+   <path d="M32 21c0-4 2-7 5-8" fill="none"/>
+   <path d="M37 14c6-3 11-1 13 4-6 3-11 1-13-4Z" fill="#54AB41"/>`,
  pear: `
    <path d="M35 16c1 7 11 11 13 22 2 12-6 20-16 20s-18-8-16-20c2-11 12-15 13-22 2-3 4-3 6 0Z" fill="#B8D455"/>
    <path d="M33 14c0-5 3-8 7-9" stroke="#5C432A"/>
