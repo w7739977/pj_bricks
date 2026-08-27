@@ -10,6 +10,7 @@ export function createMoveAnimator({
 }) {
   const active = new Map();
   let following = new Set();
+  let lastFollowSig = '';
 
   function cancelActive(el) {
     const previous = active.get(el);
@@ -26,6 +27,7 @@ export function createMoveAnimator({
   }
 
   function releaseFollowing() {
+    lastFollowSig = '';
     const cells = following;
     following = new Set();
     for (const el of cells) clearCell(el);
@@ -50,6 +52,8 @@ export function createMoveAnimator({
   }
 
   function follow(positions, offsetX, offsetY) {
+    const sig = `${positions.map(p => `${p.r},${p.c}`).join(';')}|${offsetX}|${offsetY}`;
+    if (sig === lastFollowSig) return;
     const next = new Set();
     for (const position of positions) {
       const el = getCell(position.r, position.c);
@@ -59,6 +63,7 @@ export function createMoveAnimator({
     for (const el of following) {
       if (!next.has(el)) clearCell(el);
     }
+    lastFollowSig = sig;
 
     for (const el of next) {
       cancelActive(el);
@@ -69,6 +74,7 @@ export function createMoveAnimator({
   }
 
   function settleFollow(duration, onComplete = () => {}) {
+    lastFollowSig = '';
     const cells = [...following];
     following = new Set();
     if (duration === 0 || cells.length === 0) {
@@ -116,6 +122,7 @@ export function createMoveAnimator({
   }
 
   function cancelAll() {
+    lastFollowSig = '';
     releaseFollowing();
     for (const el of [...active.keys()]) clearCell(el);
   }

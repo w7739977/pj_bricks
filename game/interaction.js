@@ -657,10 +657,25 @@ function onPointerDown(e) {
   updateLevelControls();
 }
 
+let dragFramePending = false;
+let dragLatestXY = null;
+
 function onPointerMove(e) {
   if (!state.drag || !dragInput.owns(e.pointerId)) return;
   if (e.cancelable) e.preventDefault();
   const { x, y } = pointerXY(e);
+  // 仅记录最新坐标，实际处理合并到每帧一次，避免高刷指针事件重复触发全量工作
+  dragLatestXY = { x, y };
+  if (dragFramePending) return;
+  dragFramePending = true;
+  requestAnimationFrame(() => {
+    dragFramePending = false;
+    if (!state.drag || !dragLatestXY) return;
+    handleDragMove(dragLatestXY.x, dragLatestXY.y);
+  });
+}
+
+function handleDragMove(x, y) {
   const dx = x - state.drag.startX;
   const dy = y - state.drag.startY;
   if (!state.drag.axis) {
