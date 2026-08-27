@@ -31,9 +31,10 @@ const BODIES = {
    <path d="M32 20V12m0 0-6 2m6-2 6 2M32 12h-7m7 0h7" stroke="#3E9B35"/>
    <path d="M25 13c-3-3-7-3-9 0 2 3 6 4 9 2m14-2c3-3 7-3 9 0-2 3-6 4-9 2" fill="#3E9B35"/>`,
  carrot: `
-   <path d="M27 22h12l-3 31c-.5 5-5.5 5-6 0Z" fill="#F58A23"/>
-   <path d="m29 24-4 6m13-6 4 6M32 24l-1 8" stroke="#CE6015" stroke-width="2.6"/>
-   <path d="M33 22c-8-2-11-8-8-14 5 1 9 6 8 14Zm-2 0c8-3 13 0 14 6-5 3-11 1-14-6Zm1 0c0-6 4-11 10-11 0 6-4 10-10 11Z" fill="#4CAF43"/>`,
+   <path d="M24 24h16l-3.5 28c-.8 7-8.2 7-9 0Z" fill="#F58A23"/>
+   <path d="M26.5 31l5 1m1-1 5-1m-13 10 5 1m2 0 5-1m-12 10 4 1m2.5 0 4-1" stroke="#CE6015" stroke-width="2.6"/>
+   <path d="M34 22c-9-1-14-8-11-16 6 1 11 7 11 16Zm1 0c9-4 15 0 17 7-6 4-13 2-17-7Zm-1 0c-1-7 3-13 11-14 1 7-3 12-11 14Z" fill="#4CAF43"/>
+   <path d="M27 30c2 3 8 3 10 0" stroke="#FFC07A" stroke-width="2.4"/>`,
  corn: `
    <path d="M23 18c5-6 13-6 18 0l-2 30c-3 6-11 6-14 0Z" fill="#FFCB38"/>
    <path d="M30 20v30m8-32v32M23 27h17m-18 9h17m-17 9h14" stroke="#DA9819" stroke-width="2.4"/>
@@ -76,9 +77,10 @@ const BODIES = {
    <path d="M19 18c3-5 8-7 13-4 5-3 10-1 13 4-4 4-8 6-13 5-5 1-9-1-13-5Z" fill="#52A93F"/>
    <path d="M26 28l2 1m9-1 2 1m-11 9 2 1m9 0 2 1m-13 8 2 1" stroke="#FFE35A" stroke-width="3"/>`,
  banana: `
-   <path d="M11 34c8 13 22 19 35 12 7-4 10-11 8-19-7 7-15 10-24 8-7-2-11-5-14-10-4 2-6 5-5 9Z" fill="#FFD84D"/>
-   <path d="M17 31c8 9 20 13 32 7" stroke="#DBA020" stroke-width="2.6"/>
-   <path d="M9 33c-1-2 0-4 2-5m43 3c2 2 2 4 1 6" stroke="#8A6338" stroke-width="3"/>`,
+   <path d="M8 32c4 16 20 26 36 19 9-4 13-13 11-23l-3-8c-2 10-8 16-18 17-9 1-16-2-21-9-3 1-5 2-5 4Z" fill="#FFD84D"/>
+   <path d="M14 36c9 10 22 13 33 6" stroke="#DBA020" stroke-width="2.6"/>
+   <path d="M52 28c3-3 6-4 9-3-1 4-4 6-8 6" fill="#FFEFAF"/>
+   <path d="M8 32c-2 0-3 2-3 4s2 3 4 3" fill="#8A6338"/>`,
  orange: `
    <circle cx="32" cy="38" r="18" fill="#FFAE33"/>
    <circle cx="26" cy="31" r="1.7" fill="#F58208" stroke="#F58208" stroke-width="2"/>
