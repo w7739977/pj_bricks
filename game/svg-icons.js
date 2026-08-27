@@ -31,10 +31,10 @@ const BODIES = {
    <path d="M32 20V12m0 0-6 2m6-2 6 2M32 12h-7m7 0h7" stroke="#3E9B35"/>
    <path d="M25 13c-3-3-7-3-9 0 2 3 6 4 9 2m14-2c3-3 7-3 9 0-2 3-6 4-9 2" fill="#3E9B35"/>`,
  carrot: `
-   <path d="M24 24h16l-3.5 28c-.8 7-8.2 7-9 0Z" fill="#F58A23"/>
-   <path d="M26.5 31l5 1m1-1 5-1m-13 10 5 1m2 0 5-1m-12 10 4 1m2.5 0 4-1" stroke="#CE6015" stroke-width="2.6"/>
-   <path d="M34 22c-9-1-14-8-11-16 6 1 11 7 11 16Zm1 0c9-4 15 0 17 7-6 4-13 2-17-7Zm-1 0c-1-7 3-13 11-14 1 7-3 12-11 14Z" fill="#4CAF43"/>
-   <path d="M27 30c2 3 8 3 10 0" stroke="#FFC07A" stroke-width="2.4"/>`,
+   <path d="M20 27h24q4 0 3 5l-7 24c-1.8 6-13.2 6-15 0l-7-24q-1-5 2-5Z" fill="#F58A23"/>
+   <path d="m26 34 4 1m4 0 4-1m-10 10 4 1m3 0 4-1m-9 10 3 .8m2.5 0 3-.8" stroke="#CE6015" stroke-width="2.8"/>
+   <path d="M32 25c-11-2-17-10-13-19 7 2 12 8 13 19Zm0 0c11-4 18 1 19 9-7 4-15 1-19-9Zm0-2c-2-8 3-15 12-16 2 8-3 14-12 16Z" fill="#4CAF43"/>
+   <path d="M24 33c4 3 10 3 14 0" stroke="#FFC07A" stroke-width="2.6"/>`,
  corn: `
    <path d="M23 18c5-6 13-6 18 0l-2 30c-3 6-11 6-14 0Z" fill="#FFCB38"/>
    <path d="M30 20v30m8-32v32M23 27h17m-18 9h17m-17 9h14" stroke="#DA9819" stroke-width="2.4"/>
@@ -77,10 +77,11 @@ const BODIES = {
    <path d="M19 18c3-5 8-7 13-4 5-3 10-1 13 4-4 4-8 6-13 5-5 1-9-1-13-5Z" fill="#52A93F"/>
    <path d="M26 28l2 1m9-1 2 1m-11 9 2 1m9 0 2 1m-13 8 2 1" stroke="#FFE35A" stroke-width="3"/>`,
  banana: `
-   <path d="M8 32c4 16 20 26 36 19 9-4 13-13 11-23l-3-8c-2 10-8 16-18 17-9 1-16-2-21-9-3 1-5 2-5 4Z" fill="#FFD84D"/>
-   <path d="M14 36c9 10 22 13 33 6" stroke="#DBA020" stroke-width="2.6"/>
-   <path d="M52 28c3-3 6-4 9-3-1 4-4 6-8 6" fill="#FFEFAF"/>
-   <path d="M8 32c-2 0-3 2-3 4s2 3 4 3" fill="#8A6338"/>`,
+   <path d="M6 29c3 20 21 33 39 27 11-4 17-15 15-29l-4-9c-1 14-9 24-23 25-10 .8-17-3-22-11l-4-7c-1 1-1.4 2.5-1 4Z" fill="#FFD84D"/>
+   <path d="M14 38c9 12 24 16 37 8" stroke="#DBA020" stroke-width="2.8"/>
+   <path d="M52 22c3-4 7-6 11-5-1 5-5 8-10 8" fill="#FFEFAF"/>
+   <circle cx="7" cy="30" r="3.5" fill="#8A6338"/>
+   <path d="M15 35c8 8 18 11 28 9" stroke="#FFEFAF" stroke-width="2.4"/>`,
  orange: `
    <circle cx="32" cy="38" r="18" fill="#FFAE33"/>
    <circle cx="26" cy="31" r="1.7" fill="#F58208" stroke="#F58208" stroke-width="2"/>
