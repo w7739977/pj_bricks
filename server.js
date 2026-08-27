@@ -26,11 +26,25 @@ const server = http.createServer((req, res) => {
   const full = path.join(ROOT, filePath);
   if (!full.startsWith(ROOT)) { res.writeHead(403); res.end('Forbidden'); return; }
 
-  fs.readFile(full, (err, data) => {
-    if (err) { res.writeHead(404); res.end('Not Found'); return; }
+  fs.stat(full, (err, st) => {
+    if (err || !st.isFile()) { res.writeHead(404); res.end('Not Found'); return; }
     const ext = path.extname(full).toLowerCase();
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
-    res.end(data);
+    const etag = `W/"${st.size}-${Math.floor(st.mtimeMs)}"`;
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304, { ETag: etag, 'Cache-Control': 'no-cache' });
+      res.end();
+      return;
+    }
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': 'no-cache',
+      ETag: etag,
+      'Last-Modified': st.mtime.toUTCString(),
+    });
+    fs.readFile(full, (readErr, data) => {
+      if (readErr) { res.writeHead(500); res.end('Internal Error'); return; }
+      res.end(data);
+    });
   });
 });
 
