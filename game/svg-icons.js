@@ -1,9 +1,11 @@
-// 20 个高饱和手绘田园图标。参考截图风格：白色粗外描边"贴纸"晕圈 +
-// 饱和平涂 + 深棕内部细节线，确保小尺寸下轮廓鲜明、元素两两可分辨。
+// 20 个高饱和手绘田园图标。《羊了个羊》风格参照：
+// 奶油底上的深棕粗描边贴纸（stroke 4.2）、饱和平涂、少量深色细节线，
+// 保证小尺寸下轮廓鲜明、每个元素一眼可分辨。
 // 顺序对应 board.js 中的图案编号。
 
-const INK = '#34291D';
-const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none"><g stroke="#FFFFFF" stroke-width="5.2" paint-order="stroke" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`;
+const INK = '#40301F';
+const HALO = '#FFFDF2';
+const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none"><g stroke="${INK}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><g stroke="${HALO}" stroke-width="7" paint-order="stroke">${body}</g></g></svg>`;
 
 export const ICON_NAMES = [
   'broccoli', 'lettuce', 'tomato', 'carrot', 'corn',
