@@ -11,6 +11,7 @@ import {
   createShiftRevertMoves,
   findTargets,
   getShiftChainPositions,
+  hasLineEmptyCell,
   hasAnySolvablePair,
   reshuffleInPlace,
 } from '../game/board.js';
@@ -159,4 +160,23 @@ test('moving the selected member can expose every legal target', () => {
     { r: 0, c: 0 },
     { r: 0, c: 4 },
   ]);
+});
+
+test('hasLineEmptyCell detects empty cells along the drag axis', () => {
+  // 满盘整行无空格
+  const full = Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => 0));
+  assert.equal(hasLineEmptyCell(full, 5, 5, 'row'), false);
+  assert.equal(hasLineEmptyCell(full, 5, 5, 'col'), false);
+
+  // 行内存在空格
+  full[5][9] = null;
+  assert.equal(hasLineEmptyCell(full, 5, 0, 'row'), true);
+  assert.equal(hasLineEmptyCell(full, 0, 5, 'col'), false);
+});
+
+test('applyShift never moves a chain on a board line without empties', () => {
+  const full = Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => 0));
+  const chain = createShiftChain(full, 5, 4, 'row', 1);
+  const result = applyShift(full, 5, 4, chain, 2);
+  assert.deepEqual(result, { applied: 0, moves: [] });
 });

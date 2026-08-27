@@ -2,7 +2,7 @@ import {
   ROWS, COLS, createBoard, findTargets, findSolvablePair,
   hasAnySolvablePair, reshuffleInPlace, applyShift,
   createShiftChain, createShiftRevertMoves, getShiftChainPositions,
-  cloneBoard, restoreBoard,
+  cloneBoard, restoreBoard, hasLineEmptyCell,
 } from './board.js';
 import { ICON_LABELS, ICON_NAMES, ICONS, withFace } from './svg-icons.js';
 import { createBrowserDialogManager } from './dialogs.js';
@@ -650,6 +650,7 @@ function onPointerDown(e) {
     curR: cell.r, curC: cell.c,
     snapshot: null,
     visualOffset: { x: 0, y: 0 },
+    locked: false,
     blockedDirection: 0,
     blockedHintAt: 0,
   };
@@ -693,10 +694,18 @@ function handleDragMove(x, y) {
         state.drag.axis,
         Math.sign(initialDistance),
       );
+      // 整行/列无任何空格时链不可能平移，锁定视觉位移
+      if (!hasLineEmptyCell(state.board, state.drag.curR, state.drag.curC, state.drag.axis)) {
+        state.drag.locked = true;
+      }
     } else return;
   }
 
   const distance = state.drag.axis === 'row' ? dx : dy;
+  if (state.drag.locked) {
+    state.drag.visualOffset = { x: 0, y: 0 };
+    return;
+  }
   const result = advanceDragShift({
     distance,
     pitch: state.pitch,

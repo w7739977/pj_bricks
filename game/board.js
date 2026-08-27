@@ -180,6 +180,16 @@ export function createShiftRevertMoves(originR, originC, currentR, currentC, cha
   });
 }
 
+// 语义：判断拖拽轴线所在整行/列是否存在空格；无空格则链不可能产生任何平移
+export function hasLineEmptyCell(board, r, c, axis) {
+  const limit = axis === 'row' ? COLS : ROWS;
+  for (let index = 0; index < limit; index++) {
+    const value = axis === 'row' ? board[r][index] : board[index][c];
+    if (value === null) return true;
+  }
+  return false;
+}
+
 // 语义：移动拖拽开始时确定的固定连接链，途中不吸收新元素
 export function applyShift(board, r, c, chain, delta) {
   if (delta === 0 || board[r][c] === null || chain.length === 0) {
