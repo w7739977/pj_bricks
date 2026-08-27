@@ -3,9 +3,103 @@
 // 保证小尺寸下轮廓鲜明、每个元素一眼可分辨。
 // 顺序对应 board.js 中的图案编号。
 
-const INK = '#40301F';
-const HALO = '#FFFDF2';
-const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none"><g stroke="${INK}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><g stroke="${HALO}" stroke-width="7" paint-order="stroke">${body}</g></g></svg>`;
+// 20 个高饱和手绘田园图标。《羊了个羊》风格完全重绘：
+// Q弹圆润造型、深棕粗描边(4.6px)、高饱和平涂、单点白色高光，
+// 元素占格率 ~85%，小尺寸下剪影与色相双重可分辨。
+// 顺序对应 board.js 中的图案编号。
+
+const INK = '#3D2B1F';
+const HILITE = '#FFFFFF';
+const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none"><g stroke="${INK}" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`;
+
+const GLOSS = (cx, cy, rx, ry, rot = -25) =>
+  `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${cx} ${cy})" fill="${HILITE}" stroke="none" opacity="0.7"/>`;
+
+const BODIES = {
+ broccoli: `
+   <path d="M26 36h12l-2 18H28Z" fill="#9BD65A"/>
+   <path d="M14 34c-5-8-1-16 6-17-1-8 9-13 15-8 8-6 19 0 17 9 7 3 7 12 0 16Z" fill="#33B24E"/>
+   <circle cx="22" cy="24" r="2.6" fill="#1E8A3C" stroke="#1E8A3C" stroke-width="2.4"/>
+   <circle cx="33" cy="19" r="2.6" fill="#1E8A3C" stroke="#1E8A3C" stroke-width="2.4"/>
+   <circle cx="42" cy="26" r="2.6" fill="#1E8A3C" stroke="#1E8A3C" stroke-width="2.4"/>`,
+ lettuce: `
+   <path d="M10 38c0-9 8-15 12-20 3 4 4 8 10 8s7-4 10-8c4 5 12 11 12 20 0 12-10 20-22 20S10 50 10 38Z" fill="#8FD455"/>
+   <path d="M18 40c4 5 10 8 14 8m14-8c-4 5-10 8-14 8" stroke="#57A93A" stroke-width="3"/>
+   <path d="M32 30v16" stroke="#57A93A" stroke-width="3"/>`,
+ tomato: `
+   <path d="M32 18c12-2 21 7 21 18 0 12-9 21-21 21S11 48 11 36c0-11 9-20 21-18Z" fill="#EE4035"/>
+   <path d="M32 20V12m0 0-6 2m6-2 6 2M32 12h-7m7 0h7" stroke="#3E9B35"/>
+   <path d="M25 13c-3-3-7-3-9 0 2 3 6 4 9 2m14-2c3-3 7-3 9 0-2 3-6 4-9 2" fill="#3E9B35"/>`,
+ carrot: `
+   <path d="M27 22h12l-3 31c-.5 5-5.5 5-6 0Z" fill="#F58A23"/>
+   <path d="m29 24-4 6m13-6 4 6M32 24l-1 8" stroke="#CE6015" stroke-width="2.6"/>
+   <path d="M33 22c-8-2-11-8-8-14 5 1 9 6 8 14Zm-2 0c8-3 13 0 14 6-5 3-11 1-14-6Zm1 0c0-6 4-11 10-11 0 6-4 10-10 11Z" fill="#4CAF43"/>`,
+ corn: `
+   <path d="M23 18c5-6 13-6 18 0l-2 30c-3 6-11 6-14 0Z" fill="#FFCB38"/>
+   <path d="M30 20v30m8-32v32M23 27h17m-18 9h17m-17 9h14" stroke="#DA9819" stroke-width="2.4"/>
+   <path d="M22 18c-7 2-10 12-8 24 1 8 4 13 8 15l5-39Z" fill="#5FAF41"/>
+   <path d="M42 18c7 2 10 12 8 24-1 8-4 13-8 15l-5-39Z" fill="#67BB47"/>`,
+ eggplant: `
+   <path d="M24 22c-7 4-10 14-6 23 4 10 16 13 25 6 9-7 9-20 0-27-6-5-13-4-19-2Z" fill="#8E44BE"/>
+   <path d="M26 20l-2-8 8 4 3-9 3 9 8-4-2 8" fill="#57AB40"/>
+   <path d="M24 46c5 5 12 6 17 2" stroke="#6E2E96" stroke-width="2.8"/>`,
+ onion: `
+   <path d="M32 14c-8 4-17 12-17 26 0 11 8 17 17 17s17-6 17-17c0-14-9-22-17-26Z" fill="#C58ADB"/>
+   <path d="M32 14c-2-4-5-6-9-6m9 6c1-4 4-7 8-7" stroke="#5E8C38"/>
+   <path d="M25 24c-3 9-2 20 3 28m11-28c3 9 2 20-3 28" stroke="#9355AE" stroke-width="2.8"/>`,
+ potato: `
+   <path d="M12 35c0-11 9-18 20-18s21 7 20 19c-1 11-9 18-20 18S12 47 12 35Z" fill="#C69A62"/>
+   <path d="M24 27l3-2m13 3 3-2m-2 15 3-2M28 42l3-2m-16-3 3-2" stroke="#8A6338" stroke-width="3"/>`,
+ cucumber: `
+   <path d="M12 37c-1-9 8-16 20-19 12-4 23-1 25 8 2 9-7 17-19 20-12 4-25 1-26-9Z" fill="#61AA3B"/>
+   <path d="M24 32l2 1m9-7 2 1m9 4 2 1m-19 8 2 1m10 0 2 1" stroke="#37671F" stroke-width="3"/>
+   <path d="M16 37c9 3 24-1 34-9" stroke="#95CF63" stroke-width="2.6"/>`,
+ pepper: `
+   <path d="M32 20c-11 0-19 8-17 19 2 10 10 17 17 17s15-7 17-17c2-11-6-19-17-19Z" fill="#3EA245"/>
+   <path d="M32 22v32m-8-31c-3 9-3 22 0 30m16-30c3 9 3 22 0 30" stroke="#237A33" stroke-width="2.8"/>`,
+ pumpkin: `
+   <path d="M11 37c0-11 9-18 21-18s21 7 21 18-9 19-21 19-21-8-21-19Z" fill="#F5921E"/>
+   <path d="M22 22c-5 9-5 21 0 30m20-30c5 9 5 21 0 30M32 20v35" stroke="#D96C15" stroke-width="2.8"/>
+   <path d="M32 20c-1-6 2-10 7-11-1 5-2 8-7 11Zm-2 0c-4-3-8-2-10 1 3 2 7 2 10-1Z" fill="#6B8F37"/>`,
+ grape: `
+   <path d="M32 16c-2-5 0-9 5-11 1 5-1 9-5 11Zm-1-2C26 8 20 8 16 11c3 4 9 5 15 3Z" fill="#54A83E"/>
+   <circle cx="21" cy="26" r="7.5" fill="#9046C2"/><circle cx="35" cy="24" r="7.5" fill="#9B4FD0"/>
+   <circle cx="16" cy="38" r="7.5" fill="#813CB4"/><circle cx="30" cy="37" r="7.5" fill="#9F55D6"/>
+   <circle cx="44" cy="36" r="7.5" fill="#8843BC"/><circle cx="23" cy="49" r="7.5" fill="#984ECF"/>
+   <circle cx="38" cy="48" r="7.5" fill="#7E3AAD"/>`,
+ apple: `
+   <path d="M17 28c-1-8 6-13 15-10 9-3 16 2 15 10 1 12-6 24-15 27-9-3-16-15-15-27Z" fill="#E8483E"/>
+   <path d="M32 18c-1-6 2-10 7-12" stroke="#5C432A"/>
+   <path d="M39 8c6-2 11 1 12 6-6 2-11-1-12-6Z" fill="#56AC42"/>`,
+ strawberry: `
+   <path d="M32 16c-11 0-17 6-14 17 3 11 9 21 14 23 5-2 11-12 14-23 3-11-3-17-14-17Z" fill="#F4436B"/>
+   <path d="M19 18c3-5 8-7 13-4 5-3 10-1 13 4-4 4-8 6-13 5-5 1-9-1-13-5Z" fill="#52A93F"/>
+   <path d="M26 28l2 1m9-1 2 1m-11 9 2 1m9 0 2 1m-13 8 2 1" stroke="#FFE35A" stroke-width="3"/>`,
+ banana: `
+   <path d="M11 34c8 13 22 19 35 12 7-4 10-11 8-19-7 7-15 10-24 8-7-2-11-5-14-10-4 2-6 5-5 9Z" fill="#FFD84D"/>
+   <path d="M17 31c8 9 20 13 32 7" stroke="#DBA020" stroke-width="2.6"/>
+   <path d="M9 33c-1-2 0-4 2-5m43 3c2 2 2 4 1 6" stroke="#8A6338" stroke-width="3"/>`,
+ orange: `
+   <circle cx="32" cy="37" r="20" fill="#FF972F"/>
+   <path d="M32 17c1-6 5-9 11-9-1 6-5 9-11 9Z" fill="#54AB41"/>
+   <path d="M22 33c1 6 4 10 8 12" stroke="#E0770E" stroke-width="2.6"/>`,
+ pear: `
+   <path d="M35 16c1 7 11 11 13 22 2 12-6 20-16 20s-18-8-16-20c2-11 12-15 13-22 2-3 4-3 6 0Z" fill="#B8D455"/>
+   <path d="M33 14c0-5 3-8 7-9" stroke="#5C432A"/>
+   <path d="M40 7c6-2 11 1 12 6-6 2-11-1-12-6Z" fill="#54A83E"/>`,
+ cherry: `
+   <path d="M24 34C27 20 35 13 45 11m-7 30c0-10 0-20-1-28" stroke="#5C432A"/>
+   <path d="M46 12c-5-6-11-5-13-1 4 3 9 4 13 1Z" fill="#54A83E"/>
+   <circle cx="20" cy="46" r="11" fill="#ED4242"/><circle cx="40" cy="47" r="11" fill="#F4574E"/>`,
+ peach: `
+   <path d="M13 38c-1-13 8-22 19-22s21 9 19 22c-2 12-11 20-19 20s-17-8-19-20Z" fill="#FB8E77"/>
+   <path d="M35 20c3 10 1 25-4 33" stroke="#E76A50" stroke-width="2.8"/>
+   <path d="M35 20c2-7 8-10 14-8-2 7-7 10-14 8Z" fill="#58AD43"/>`,
+ watermelon: `
+   <path d="M8 36c6-14 17-21 30-18 13 3 19 15 13 25-7 13-23 17-36 11C7 50 4 43 8 36Z" fill="#53AF4A"/>
+   <path d="M15 38c6-9 16-14 28-12 4 8-2 17-12 21-9 4-16 0-16-9Z" fill="#F04848"/>
+   <path d="m24 36 2 1m9-6 2 1m4 8 2 1m-13 5 2 1" stroke="#3D2314" stroke-width="2.6"/>`,
+};
 
 export const ICON_NAMES = [
   'broccoli', 'lettuce', 'tomato', 'carrot', 'corn',
@@ -22,108 +116,47 @@ export const ICON_LABELS = Object.freeze({
 });
 
 export const ICONS = {
-  broccoli: S('broccoli', `
-    <path d="M27 33 25 55h14l-3-22Z" fill="#8CCB4F"/>
-    <path d="M18 34c-7-2-9-10-4-15-2-7 6-13 12-9 4-8 15-7 18 0 8-2 13 6 10 12 5 6 0 14-8 14Z" fill="#2EAF4A"/>
-    <path d="M20 24c4-3 8-2 10 2M36 18c4-3 9-1 10 3" stroke="#167C36" stroke-width="2.2"/>
-  `),
-  lettuce: S('lettuce', `
-    <path d="M11 37c-3-9 2-17 10-19 1-8 11-11 17-5 7-4 16 2 14 10 8 4 7 15 1 20-4 9-15 13-25 10-10 2-20-6-17-16Z" fill="#92D45D"/>
-    <path d="M19 31c5-5 10-4 13 1 4-7 11-8 16-3M18 42c6-4 10-2 13 3 4-5 10-6 15-2" stroke="#4C9B38" stroke-width="2.2"/>
-  `),
-  tomato: S('tomato', `
-    <path d="M15 37c0-14 9-21 18-20 10-2 19 7 18 20 1 12-7 20-18 20-11 1-19-7-18-20Z" fill="#EF413D"/>
-    <path d="m21 19 5-8 6 6 5-8 3 9 8-3-5 9H22l-6-7Z" fill="#4FA83C"/>
-    <path d="M22 34c2-6 7-9 12-9" stroke="#FF7A65" stroke-width="2.2"/>
-  `),
-  carrot: S('carrot', `
-    <path d="M22 22 31 55c1 4 5 4 7 0l8-33Z" fill="#F58B25"/>
-    <path d="m24 23-8-12 11 5L28 5l5 11L40 5l-2 12 11-6-6 13Z" fill="#4DAA43"/>
-    <path d="m28 32 8-2m-6 10 8-2m-5 10 7-2" stroke="#C85B20" stroke-width="2.2"/>
-  `),
-  corn: S('corn', `
-    <path d="M22 15c6-5 15-5 21 1l-3 38c-5 5-12 5-17 0Z" fill="#FFD43B"/>
-    <path d="M23 22C14 17 12 28 14 43c1 7 5 11 10 13l4-28Z" fill="#68B846"/>
-    <path d="M42 22c9-5 11 6 9 21-1 7-5 11-10 13l-4-28Z" fill="#58A93E"/>
-    <path d="M28 20v31m7-33v34M23 27h19m-18 9h17m-17 9h16" stroke="#D69B20" stroke-width="1.8"/>
-  `),
-  eggplant: S('eggplant', `
-    <path d="M25 19c-8 5-12 17-8 28 4 12 17 14 26 7 9-7 11-20 4-29-5-6-14-9-22-6Z" fill="#8F4DB7"/>
-    <path d="m23 20-5-10 10 4 4-9 4 9 10-5-4 12Z" fill="#55A743"/>
-    <path d="M23 45c5 6 13 7 19 1" stroke="#71328F" stroke-width="2.2"/>
-  `),
-  onion: S('onion', `
-    <path d="M32 8c-3 9-16 14-16 30 0 12 7 19 16 19s16-7 16-19C48 22 35 17 32 8Z" fill="#B77BD0"/>
-    <path d="m32 9-3-7m3 7 5-6" stroke="#5E8C38"/>
-    <path d="M25 22c-2 12 1 24 7 34m7-34c2 12-1 24-7 34M21 36h22" stroke="#7D45A6" stroke-width="2.1"/>
-  `),
-  potato: S('potato', `
-    <path d="M13 34c-2-12 8-21 20-22 14-1 23 8 20 22 2 12-7 21-20 22-13 0-23-8-20-22Z" fill="#B99573"/>
-    <path d="m22 26 2-1m15-4 2 1m4 14 2 1M29 43l2 1M18 38l2-1" stroke="#73533E" stroke-width="3"/>
-  `),
-  cucumber: S('cucumber', `
-    <path d="M9 38c-2-9 7-18 20-22 13-5 25-1 27 8 3 9-6 18-19 22-13 5-25 1-28-8Z" fill="#66A63C"/>
-    <path d="m22 30 1 1m10-7 1 1m10 5 1 1m-18 9 1 1m12-1 1 1" stroke="#315F2A" stroke-width="3"/>
-    <path d="M14 36c9 3 26-2 36-10" stroke="#8FCB5A" stroke-width="2.1"/>
-  `),
-  pepper: S('pepper', `
-    <path d="M24 20c-8 7-9 22-3 31 5 8 16 8 22 1 7-8 8-22 1-29-5-5-14-7-20-3Z" fill="#3D9C48"/>
-    <path d="m25 20-5-9 10 4 4-9 3 10 9-4-4 10Z" fill="#5EAE43"/>
-    <path d="M27 29c-2 8 0 15 5 21" stroke="#23743A" stroke-width="2.1"/>
-  `),
-  pumpkin: S('pumpkin', `
-    <path d="M14 39c0-11 7-18 18-18s18 7 18 18-7 17-18 17-18-6-18-17Z" fill="#F39424"/>
-    <path d="M23 23c-6 8-6 25 0 31m18-31c6 8 6 25 0 31M32 22v33" stroke="#D66B1D" stroke-width="2.2"/>
-    <path d="m31 21-2-10 7-2 1 11" fill="#6A8D36"/>
-  `),
-  grape: S('grape', `
-    <path d="m31 17-2-10 11-3 4 9Z" fill="#56A33E"/>
-    <circle cx="23" cy="27" r="7" fill="#8D3BB0"/><circle cx="36" cy="27" r="7" fill="#9B42BD"/>
-    <circle cx="29" cy="38" r="7" fill="#7F35A5"/><circle cx="43" cy="39" r="7" fill="#913CB4"/>
-    <circle cx="22" cy="48" r="7" fill="#923CB6"/><circle cx="36" cy="50" r="7" fill="#713094"/>
-  `),
-  apple: S('apple', `
-    <path d="M18 28c-3-9 5-15 13-11 8-5 18 1 15 11 5 11-2 25-13 28-12 1-21-15-15-28Z" fill="#E7473F"/>
-    <path d="M32 18c0-7 2-11 7-14" stroke="#6C4B2C"/>
-    <path d="M36 11c5-6 12-4 13 3-5 3-10 2-13-1Z" fill="#58A944"/>
-    <path d="M21 33c1-5 4-8 8-9" stroke="#FF7667" stroke-width="2.2"/>
-  `),
-  strawberry: S('strawberry', `
-    <path d="M32 15c-12 0-18 7-14 19 4 12 10 22 14 23 5-1 12-12 15-23 3-12-3-19-15-19Z" fill="#F04A61"/>
-    <path d="m18 17 6-10 5 8 5-10 4 10 9-7-3 12Z" fill="#56AA43"/>
-    <g fill="#FFE35A" stroke="none"><circle cx="26" cy="29" r="2"/><circle cx="36" cy="27" r="2"/><circle cx="41" cy="35" r="2"/><circle cx="29" cy="39" r="2"/><circle cx="34" cy="48" r="2"/></g>
-  `),
-  banana: S('banana', `
-    <path d="M10 35c8 14 24 20 38 11 7-4 10-12 8-20-8 8-17 12-27 9-7-2-12-6-16-11-3 3-4 7-3 11Z" fill="#F4D54A"/>
-    <path d="M15 29c10 11 24 15 36 7" stroke="#D29B24" stroke-width="2.2"/>
-  `),
-  orange: S('orange', `
-    <circle cx="32" cy="35" r="20" fill="#F69227"/>
-    <path d="M31 15c3-8 10-11 17-8-2 7-8 10-16 9Z" fill="#5AAA43"/>
-    <path d="M19 35h26M32 22v26" stroke="#D76C1E" stroke-width="1.8"/>
-  `),
-  pear: S('pear', `
-    <path d="M35 13c2 8 12 12 13 24 1 12-6 20-17 20S13 49 16 37c2-10 12-15 13-24Z" fill="#ACD052"/>
-    <path d="M34 13c0-5 2-8 6-10" stroke="#6C4B2C"/>
-    <path d="M38 9c6-5 11-3 13 2-5 3-9 2-13-2Z" fill="#56A640"/>
-  `),
-  cherry: S('cherry', `
-    <path d="M18 36c-7 0-12 6-11 13 1 8 9 11 15 7 6 4 14 1 15-7 1-7-5-13-12-13Z" fill="#E84747"/>
-    <path d="M39 34c-7 0-12 6-11 13 1 8 9 11 15 7 6 4 14 1 15-7 1-7-5-13-12-13Z" fill="#EF5A50"/>
-    <path d="M22 36C25 20 34 13 43 10m1 24c0-9-1-17-1-24" stroke="#6C4B2C"/>
-    <path d="M40 13c-6-7-12-5-14 0 5 4 10 4 14 0Z" fill="#59A846"/>
-  `),
-  peach: S('peach', `
-    <path d="M13 35c0-14 10-23 22-23 13 0 21 10 18 24-2 13-13 21-24 19-10-2-16-9-16-20Z" fill="#F58B6A"/>
-    <path d="M34 13c-4 12-2 28 8 38" stroke="#E96B55" stroke-width="2.2"/>
-    <path d="M34 13c4-9 13-10 18-5-4 7-10 9-17 7Z" fill="#5AA844"/>
-  `),
-  watermelon: S('watermelon', `
-    <path d="M8 35c7-15 19-22 34-18 12 3 17 14 11 24-7 12-23 17-36 11C7 48 4 42 8 35Z" fill="#58AD4D"/>
-    <path d="M15 37c7-9 18-14 31-12 4 8-3 17-13 21-8 4-16 1-18-9Z" fill="#EF4C4C"/>
-    <path d="m22 36 2 1m10-5 2 1m5 6 2 1" stroke="#4F2C1F" stroke-width="2.4"/>
-  `),
+  broccoli: S("broccoli", BODIES.broccoli),
+
+  lettuce: S("lettuce", BODIES.lettuce),
+
+  tomato: S("tomato", BODIES.tomato),
+
+  carrot: S("carrot", BODIES.carrot),
+
+  corn: S("corn", BODIES.corn),
+
+  eggplant: S("eggplant", BODIES.eggplant),
+
+  onion: S("onion", BODIES.onion),
+
+  potato: S("potato", BODIES.potato),
+
+  cucumber: S("cucumber", BODIES.cucumber),
+
+  pepper: S("pepper", BODIES.pepper),
+
+  pumpkin: S("pumpkin", BODIES.pumpkin),
+
+  grape: S("grape", BODIES.grape),
+
+  apple: S("apple", BODIES.apple),
+
+  strawberry: S("strawberry", BODIES.strawberry),
+
+  banana: S("banana", BODIES.banana),
+
+  orange: S("orange", BODIES.orange),
+
+  pear: S("pear", BODIES.pear),
+
+  cherry: S("cherry", BODIES.cherry),
+
+  peach: S("peach", BODIES.peach),
+
+  watermelon: S("watermelon", BODIES.watermelon),
 };
+
 
 // 在 SVG 闭合前注入表情层。
 export function withFace(svg, face) {
