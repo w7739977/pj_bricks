@@ -1,8 +1,9 @@
-// 20 个高饱和手绘田园图标。统一深棕粗描边、平涂和少量内部纹理。
+// 20 个高饱和手绘田园图标。参考截图风格：白色粗外描边"贴纸"晕圈 +
+// 饱和平涂 + 深棕内部细节线，确保小尺寸下轮廓鲜明、元素两两可分辨。
 // 顺序对应 board.js 中的图案编号。
 
 const INK = '#34291D';
-const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none"><g stroke="${INK}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`;
+const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none"><g stroke="#FFFFFF" stroke-width="5.2" paint-order="stroke" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`;
 
 export const ICON_NAMES = [
   'broccoli', 'lettuce', 'tomato', 'carrot', 'corn',
@@ -101,13 +102,13 @@ export const ICONS = {
   `),
   pear: S('pear', `
     <path d="M35 13c2 8 12 12 13 24 1 12-6 20-17 20S13 49 16 37c2-10 12-15 13-24Z" fill="#ACD052"/>
-    <path d="M34 13c0-5 2-8 6-10"/>
+    <path d="M34 13c0-5 2-8 6-10" stroke="#6C4B2C"/>
     <path d="M38 9c6-5 11-3 13 2-5 3-9 2-13-2Z" fill="#56A640"/>
   `),
   cherry: S('cherry', `
     <path d="M18 36c-7 0-12 6-11 13 1 8 9 11 15 7 6 4 14 1 15-7 1-7-5-13-12-13Z" fill="#E84747"/>
     <path d="M39 34c-7 0-12 6-11 13 1 8 9 11 15 7 6 4 14 1 15-7 1-7-5-13-12-13Z" fill="#EF5A50"/>
-    <path d="M22 36C25 20 34 13 43 10m1 24c0-9-1-17-1-24"/>
+    <path d="M22 36C25 20 34 13 43 10m1 24c0-9-1-17-1-24" stroke="#6C4B2C"/>
     <path d="M40 13c-6-7-12-5-14 0 5 4 10 4 14 0Z" fill="#59A846"/>
   `),
   peach: S('peach', `

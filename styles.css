@@ -208,7 +208,7 @@ body {
   height: 88%;
   overflow: visible;
   pointer-events: none;
-  filter: drop-shadow(0 1px 0 rgba(255,255,255,0.5));
+  filter: drop-shadow(0 2px 1px rgba(51, 41, 28, 0.38));
 }
 
 /* ===== 街机工具按钮 ===== */
