@@ -296,7 +296,9 @@ function applySingleShift(board, s) {
 
 export function findSolvablePairDeep(
   board,
-  { maxDepth = 8, maxNodes = 30000 } = {},
+  // maxNodes 6000：端局稀疏盘实测 ~140ms 内出结果，避免消除回调阻塞主线程；
+  // 超限时保守判死局（宁可多重排，不让玩家卡在理论死局）
+  { maxDepth = 8, maxNodes = 6000 } = {},
 ) {
   const direct = findSolvablePair(board);
   if (direct) return { direct: true, depth: 0, pair: direct, board: null };
