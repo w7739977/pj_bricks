@@ -13,6 +13,9 @@ import {
   getShiftChainPositions,
   hasLineEmptyCell,
   hasAnySolvablePair,
+  hasAnySolvablePairDeep,
+  findSolvablePair,
+  findSolvablePairDeep,
   reshuffleInPlace,
 } from '../game/board.js';
 import { createSeededRng } from '../game/levels.js';
@@ -179,4 +182,57 @@ test('applyShift never moves a chain on a board line without empties', () => {
   const chain = createShiftChain(full, 5, 4, 'row', 1);
   const result = applyShift(full, 5, 4, chain, 2);
   assert.deepEqual(result, { applied: 0, moves: [] });
+});
+
+// ---- 深度死局检测（考虑拖拽可达解）----
+
+function deepEmptyBoard() {
+  return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+}
+
+test('findSolvablePairDeep finds pair reachable by one shift', () => {
+  // 无直接配对：两枚 A 被列 0 的其它棋子隔开；
+  // 但第 1 行整行左移 1 格后，两枚 A 在行 1 上直连。
+  const board = deepEmptyBoard();
+  board[0][0] = 0;            // A(挡路)
+  board[0][3] = 1;
+  board[1][3] = 0;            // A
+  board[1][5] = 0;            // A —— 与 board[1][3] 之间隔着 board[1][4]
+  board[1][4] = 2;
+  board[2][3] = 3;
+  // 初始无直接配对
+  assert.equal(findSolvablePair(board), null);
+  const result = findSolvablePairDeep(board);
+  assert.ok(result.pair, '拖拽可达解应被找到');
+  assert.equal(result.direct, false);
+  assert.ok(result.depth >= 1);
+});
+
+test('findSolvablePairDeep reports direct pair without search', () => {
+  const board = deepEmptyBoard();
+  board[0][0] = 5;
+  board[0][2] = 5;
+  const result = findSolvablePairDeep(board);
+  assert.equal(result.direct, true);
+  assert.equal(result.depth, 0);
+  assert.equal(result.pair.r1, 0);
+});
+
+test('findSolvablePairDeep declares true deadlock (nothing reachable)', () => {
+  const board = deepEmptyBoard();
+  // 全盘仅 2 枚不同图标，永无可消对，且任何拖拽都无法改变这一点
+  board[0][0] = 0;
+  board[5][5] = 1;
+  const result = findSolvablePairDeep(board);
+  assert.equal(result.pair, null);
+});
+
+test('hasAnySolvablePairDeep mirrors findSolvablePairDeep', () => {
+  const board = deepEmptyBoard();
+  board[0][0] = 0;
+  board[3][2] = 0;
+  board[3][4] = 1;
+  board[0][9] = 1;
+  assert.equal(hasAnySolvablePair(board), false);
+  assert.equal(hasAnySolvablePairDeep(board), true);
 });

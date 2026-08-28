@@ -1,6 +1,6 @@
 import {
   ROWS, COLS, createBoard, findTargets, findSolvablePair,
-  hasAnySolvablePair, reshuffleInPlace, applyShift,
+  hasAnySolvablePair, findSolvablePairDeep, reshuffleInPlace, applyShift,
   createShiftChain, createShiftRevertMoves, getShiftChainPositions,
   cloneBoard, restoreBoard, hasLineEmptyCell,
 } from './board.js';
@@ -452,11 +452,15 @@ function hint() {
   if (state.busy || state.phase !== 'playing' || state.mode !== 'idle') return;
   clearTip();
   const pair = findSolvablePair(state.board);
-  const outcome = state.levelSession.useHint({ pairAvailable: Boolean(pair) });
-  if (outcome.action === 'deadlock') {
-    void handleDeadlock();
+  if (!pair) {
+    // 无直接配对：检查是否存在"拖拽可达"的解。
+    // 有则只做文字提示，不消耗提示次数、不判死局。
+    if (hasAnySolvablePairDeep(state.board)) {
+      showTip('当前没有可直连的配对，试试拖动整行或整列！');
+    }
     return;
   }
+  const outcome = state.levelSession.useHint({ pairAvailable: true });
   if (outcome.action !== 'highlight-pair') return;
 
   clearHintHighlight();
@@ -512,7 +516,8 @@ function afterEliminate() {
     void completeCurrentLevel();
     return;
   }
-  if (!hasAnySolvablePair(state.board)) void handleDeadlock();
+  // 死局口径：连"整行/列拖拽可达"的解都不存在才算死局（深度搜索）
+  if (!hasAnySolvablePairDeep(state.board)) void handleDeadlock();
 }
 
 function isAllCleared() {

@@ -244,3 +244,85 @@ export function restoreBoard(board, snap) {
     for (let c = 0; c < COLS; c++)
       board[r][c] = snap[r][c];
 }
+
+// ---- 深度死局检测：考虑整行/列单步拖拽可达的盘面 ----
+// 定义：若从当前盘面出发，经任意次"一段连续棋子向相邻空位平移1格"后
+// 存在直接配对，则不判死局。BFS + 状态去重 + 深度/节点上限。
+
+function boardKey(board) {
+  let key = '';
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      key += board[r][c] === null ? '.' : String.fromCharCode(65 + board[r][c] % 60);
+  return key;
+}
+
+function enumerateSingleShifts(board) {
+  const shifts = [];
+  const tryLine = (isRow, fixed, len) => {
+    const at = i => isRow ? board[fixed][i] : board[i][fixed];
+    let i = 0;
+    while (i < len) {
+      if (at(i) === null) { i++; continue; }
+      let j = i;
+      while (j + 1 < len && at(j + 1) !== null) j++;
+      if (i - 1 >= 0 && at(i - 1) === null)
+        shifts.push({ axis: isRow ? 'row' : 'col', fixed, lo: i, hi: j, dir: -1 });
+      if (j + 1 < len && at(j + 1) === null)
+        shifts.push({ axis: isRow ? 'row' : 'col', fixed, lo: i, hi: j, dir: 1 });
+      i = j + 1;
+    }
+  };
+  for (let r = 0; r < ROWS; r++) tryLine(true, r, COLS);
+  for (let c = 0; c < COLS; c++) tryLine(false, c, ROWS);
+  return shifts;
+}
+
+function applySingleShift(board, s) {
+  const next = cloneBoard(board);
+  if (s.axis === 'row') {
+    if (s.dir > 0) {
+      for (let i = s.hi; i >= s.lo; i--) { next[s.fixed][i + 1] = next[s.fixed][i]; next[s.fixed][i] = null; }
+    } else {
+      for (let i = s.lo; i <= s.hi; i++) { next[s.fixed][i - 1] = next[s.fixed][i]; next[s.fixed][i] = null; }
+    }
+  } else if (s.dir > 0) {
+    for (let i = s.hi; i >= s.lo; i--) { next[i + 1][s.fixed] = next[i][s.fixed]; next[i][s.fixed] = null; }
+  } else {
+    for (let i = s.lo; i <= s.hi; i++) { next[i - 1][s.fixed] = next[i][s.fixed]; next[i][s.fixed] = null; }
+  }
+  return next;
+}
+
+export function findSolvablePairDeep(
+  board,
+  { maxDepth = 8, maxNodes = 30000 } = {},
+) {
+  const direct = findSolvablePair(board);
+  if (direct) return { direct: true, depth: 0, pair: direct, board: null };
+
+  const visited = new Set([boardKey(board)]);
+  let frontier = [board];
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    const nextFrontier = [];
+    for (const state of frontier) {
+      for (const shift of enumerateSingleShifts(state)) {
+        const next = applySingleShift(state, shift);
+        const key = boardKey(next);
+        if (visited.has(key)) continue;
+        visited.add(key);
+        if (visited.size > maxNodes) return { direct: false, depth: -1, pair: null, board: null };
+        const pair = findSolvablePair(next);
+        if (pair) return { direct: false, depth, pair, shiftFrom: shift, board: next };
+        nextFrontier.push(next);
+      }
+    }
+    if (nextFrontier.length === 0) break;
+    frontier = nextFrontier;
+  }
+  return { direct: false, depth: -1, pair: null, board: null };
+}
+
+export function hasAnySolvablePairDeep(board, options) {
+  return findSolvablePairDeep(board, options).pair !== null;
+}
