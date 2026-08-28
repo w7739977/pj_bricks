@@ -760,16 +760,16 @@ function handleDragMove(x, y) {
     // 避免跨格时重建 innerHTML 造成的掉帧；模型照常更新，落子时一次性同步
   }
 
-  // 视觉总位移 = 已吸附格数 × 格距 + 手指残差
+  // 视觉残差：只有拖拽轴上有分量，另一轴恒为 0
   const residual = state.drag.axis === 'row'
     ? { x: result.visualOffset, y: 0 }
     : { x: 0, y: result.visualOffset };
   state.drag.visualOffset = residual;
-  moveAnimator.follow(
-    state.drag.chainCells,
-    state.drag.appliedTotal * state.pitch + residual.x,
-    state.drag.appliedTotal * state.pitch + residual.y,
-  );
+  // 视觉总位移 = 已吸附格数 × 格距 + 残差，且只加在拖拽轴上
+  const totalOffset = state.drag.axis === 'row'
+    ? { x: state.drag.appliedTotal * state.pitch + residual.x, y: 0 }
+    : { x: 0, y: state.drag.appliedTotal * state.pitch + residual.y };
+  moveAnimator.follow(state.drag.chainCells, totalOffset.x, totalOffset.y);
 
   if (result.constrained) {
     const now = Date.now();
