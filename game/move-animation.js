@@ -24,6 +24,9 @@ export function createMoveAnimator({
     cancelActive(el);
     el.style.transition = '';
     el.style.transform = '';
+    // 归还拖拽期间申请的合成层与顶层绘制位置
+    el.style.willChange = '';
+    el.style.zIndex = '';
   }
 
   function releaseFollowing() {
@@ -45,6 +48,8 @@ export function createMoveAnimator({
         if (active.get(el)?.token !== token) return;
         el.style.transition = '';
         el.style.transform = '';
+        el.style.willChange = '';
+        el.style.zIndex = '';
         active.delete(el);
         onComplete();
       }, duration + 30);
@@ -67,7 +72,13 @@ export function createMoveAnimator({
 
     for (const el of next) {
       cancelActive(el);
-      el.style.transition = 'none';
+      // transition 只需在首次加入时压掉 CSS 过渡；will-change/z-index
+      // 提升合成层与绘制层级，避免拖拽中反复光栅化大阴影图层
+      if (!following.has(el)) {
+        el.style.transition = 'none';
+        el.style.willChange = 'transform';
+        el.style.zIndex = '10';
+      }
       el.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
     }
     following = next;

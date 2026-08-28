@@ -46,7 +46,7 @@ function createScheduler() {
 
 function createCell(onLayout = () => {}) {
   return {
-    style: { transition: '', transform: '' },
+    style: { transition: '', transform: '', willChange: '', zIndex: '' },
     get offsetWidth() {
       onLayout();
       return 40;
@@ -71,7 +71,7 @@ test('follow transfers a continuous visual offset to the chain current cells', (
   assert.equal(cells[0].style.transition, 'none');
 
   animator.follow([{ r: 0, c: 1 }], -28, 0);
-  assert.deepEqual(cells[0].style, { transition: '', transform: '' });
+  assert.deepEqual(cells[0].style, { transition: '', transform: '', willChange: '', zIndex: '' });
   assert.equal(cells[1].style.transform, 'translate(-28px, 0px)');
 });
 
@@ -95,7 +95,7 @@ test('settleFollow magnetically returns followed cells to the grid', () => {
   assert.equal(cell.style.transform, '');
 
   scheduler.runTimer(scheduler.timerIds()[0]);
-  assert.deepEqual(cell.style, { transition: '', transform: '' });
+  assert.deepEqual(cell.style, { transition: '', transform: '', willChange: '', zIndex: '' });
 });
 
 test('settleFollow commits the pointer offset before scheduling its transition', () => {
@@ -175,7 +175,7 @@ test('rollback animation releases direct pointer-follow ownership', () => {
     { fromR: 0, fromC: 0, toR: 0, toC: 1 },
   ], 200, { offsetX: 12 });
 
-  assert.deepEqual(cells[0].style, { transition: '', transform: '' });
+  assert.deepEqual(cells[0].style, { transition: '', transform: '', willChange: '', zIndex: '' });
   assert.equal(cells[1].style.transform, 'translate(-28px, 0px)');
 });
 
@@ -242,7 +242,7 @@ test('zero-duration settling clears follow styles synchronously', () => {
   animator.follow([{ r: 0, c: 0 }], 12, 0);
   animator.settleFollow(0, () => { completions++; });
 
-  assert.deepEqual(cell.style, { transition: '', transform: '' });
+  assert.deepEqual(cell.style, { transition: '', transform: '', willChange: '', zIndex: '' });
   assert.deepEqual(scheduler.frameIds(), []);
   assert.deepEqual(scheduler.timerIds(), []);
   assert.equal(completions, 1);
@@ -264,7 +264,7 @@ test('zero-duration movement leaves no animation callbacks or styles', () => {
     { fromR: 0, fromC: 0, toR: 0, toC: 1 },
   ], 0);
 
-  assert.deepEqual(cell.style, { transition: '', transform: '' });
+  assert.deepEqual(cell.style, { transition: '', transform: '', willChange: '', zIndex: '' });
   assert.deepEqual(scheduler.frameIds(), []);
   assert.deepEqual(scheduler.timerIds(), []);
 });
@@ -368,7 +368,7 @@ test('cancelAll clears cells that are following the pointer', () => {
   animator.follow([{ r: 0, c: 0 }], 15, 0);
   animator.cancelAll();
 
-  assert.deepEqual(cell.style, { transition: '', transform: '' });
+  assert.deepEqual(cell.style, { transition: '', transform: '', willChange: '', zIndex: '' });
 });
 
 test('cancelAll clears active cells and blocks retained callbacks', () => {
@@ -393,8 +393,8 @@ test('cancelAll clears active cells and blocks retained callbacks', () => {
   animator.cancelAll();
 
   assert.deepEqual(cells.map(cell => cell.style), [
-    { transition: '', transform: '' },
-    { transition: '', transform: '' },
+    { transition: '', transform: '', willChange: '', zIndex: '' },
+    { transition: '', transform: '', willChange: '', zIndex: '' },
   ]);
   assert.equal(frameIds.every(id => scheduler.cancelledFrames.has(id)), true);
   assert.equal(timerIds.every(id => scheduler.cancelledTimers.has(id)), true);
@@ -402,7 +402,7 @@ test('cancelAll clears active cells and blocks retained callbacks', () => {
   frameIds.forEach(id => scheduler.runFrame(id));
   timerIds.forEach(id => scheduler.runTimer(id));
   assert.deepEqual(cells.map(cell => cell.style), [
-    { transition: '', transform: '' },
-    { transition: '', transform: '' },
+    { transition: '', transform: '', willChange: '', zIndex: '' },
+    { transition: '', transform: '', willChange: '', zIndex: '' },
   ]);
 });

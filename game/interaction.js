@@ -121,7 +121,8 @@ function measurePitch() {
   const a = cells[0].getBoundingClientRect();
   const b = cells[1].getBoundingClientRect();
   if (Math.abs(a.top - b.top) < 2) {
-    state.pitch = Math.round(b.left - a.left);
+    // 保留分数像素精度：CSS 格距在部分视口下非整数，取整会引入每格累积偏差
+    state.pitch = b.left - a.left;
   } else {
     const cssPitch = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--pitch')
