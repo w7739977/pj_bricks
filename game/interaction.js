@@ -39,7 +39,7 @@ const state = {
 };
 
 const DRAG_THRESHOLD = 10;
-const SNAP_DURATION = 120;
+const SNAP_DURATION = 90;
 
 function motionDuration(duration) {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : duration;
@@ -425,7 +425,7 @@ function eliminate(a, b) {
     afterEliminate();
   };
   scheduleForSession(() => {
-    const popDuration = motionDuration(130);
+    const popDuration = motionDuration(80);
     if (popDuration === 0) {
       finishEliminate();
       return;
@@ -433,7 +433,7 @@ function eliminate(a, b) {
     // 消失阶段：缩小淡出动画，动画结束后再清理 DOM
     cells.forEach(p => p.el.classList.add('pop'));
     scheduleForSession(finishEliminate, popDuration);
-  }, motionDuration(180));
+  }, motionDuration(110));
   cancelSelection();
 }
 

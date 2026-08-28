@@ -220,7 +220,7 @@ body {
 
 /* 消除消失动画：表情阶段结束后缩小淡出，替代瞬间蒸发 */
 .cell.pop .veg {
-  animation: veg-pop 130ms ease-in forwards;
+  animation: veg-pop 80ms ease-in forwards;
 }
 @keyframes veg-pop {
   to { transform: scale(0); opacity: 0; }
@@ -252,7 +252,7 @@ body {
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
-  transition: transform 140ms ease-out, box-shadow 140ms ease-out, filter 140ms ease-out;
+  transition: transform 100ms ease-out, box-shadow 100ms ease-out, filter 100ms ease-out;
 }
 .tool svg {
   width: 23px;
