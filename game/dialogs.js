@@ -31,7 +31,17 @@ export function createDialogManager({ getDialog }) {
       listen(dialog, 'close', () => settle(closeValue));
       install({ dialog, listen, settle });
       active.set(id, { cancel: () => settle('cancelled') });
-      dialog.showModal();
+      try {
+        // 对话框已处于打开状态时 showModal 会抛异常，先复位再打开
+        if (dialog.open) dialog.close();
+        dialog.showModal();
+      } catch {
+        // 原生 <dialog> 不可用（旧浏览器/异常态）时降级兜底，保证提示必达
+        const confirmed = typeof window !== 'undefined' && window.confirm
+          ? window.confirm(dialog.dataset.fallbackText || '是否继续？')
+          : false;
+        settle(confirmed ? closeValue : 'cancelled');
+      }
     });
   }
 

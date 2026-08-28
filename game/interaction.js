@@ -457,10 +457,22 @@ function hint() {
     // 有则只做文字提示，不消耗提示次数、不判死局。
     if (hasAnySolvablePairDeep(state.board)) {
       showTip('当前没有可直连的配对，试试拖动整行或整列！');
+      return;
     }
+    // 真死局：无论提示次数是否为 0，都必须触发死局流程
+    void handleDeadlock();
     return;
   }
   const outcome = state.levelSession.useHint({ pairAvailable: true });
+  if (outcome.action === 'none') {
+    // 提示次数已用尽：不能静默——有解则告知，无解则走死局流程
+    if (hasAnySolvablePairDeep(state.board)) {
+      showTip('提示次数已用尽，试试拖动整行或整列寻找机会！');
+    } else {
+      void handleDeadlock();
+    }
+    return;
+  }
   if (outcome.action !== 'highlight-pair') return;
 
   clearHintHighlight();
@@ -565,11 +577,14 @@ async function handleDeadlock() {
   const sessionId = state.levelSessionId;
   const outcome = state.levelSession.deadlock();
   setBusy(true);
+  // 诊断埋点：输出盘面矩阵与搜索结论，便于争议复盘
+  console.info('[deadlock-check]', JSON.stringify(state.board), outcome.action);
 
   if (outcome.action === 'offer-reshuffle') {
     const choice = await dialogs.showDeadlock();
-    if (!sessionStillCurrent(sessionId) || choice === 'cancelled') return;
+    if (!sessionStillCurrent(sessionId)) return;
     setBusy(false);
+    if (choice === 'cancelled' || choice === null) return;
     if (choice === 'retry') retryCurrentLevel();
     else tryReshuffle();
     return;

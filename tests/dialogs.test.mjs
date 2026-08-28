@@ -183,3 +183,23 @@ test('dialog manager writes completion and failure content', async () => {
   manager.closeAll();
   assert.equal(await failure, 'cancelled');
 });
+
+test('showModal failure degrades to cancelled instead of hanging', async () => {
+  const { elements, manager } = fixture();
+  const dialog = elements.get('deadlockDialog');
+  dialog.showModal = () => { throw new Error('InvalidStateError'); };
+  const pending = manager.showDeadlock();
+  assert.equal(await pending, 'cancelled');
+});
+
+test('reopen while dialog reports open does not throw and new session works', async () => {
+  const { elements, manager } = fixture();
+  const dialog = elements.get('deadlockDialog');
+  const first = manager.showDeadlock();
+  dialog.open = true; // 模拟异常态：对话框仍处于打开状态
+  const second = manager.showDeadlock();
+  assert.equal(await first, 'cancelled');
+  await Promise.resolve();
+  dialog.parts['[data-deadlock-retry]'].dispatch('click');
+  assert.equal(await second, 'retry');
+});
