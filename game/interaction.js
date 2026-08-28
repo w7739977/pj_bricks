@@ -664,6 +664,8 @@ function onPointerDown(e) {
     startX: x, startY: y,
     axis: null,
     chain: null,
+    chainCells: null,
+    appliedTotal: 0,
     lastShift: 0,
     dragged: false,
     moved: false,
@@ -714,6 +716,12 @@ function handleDragMove(x, y) {
         state.drag.axis,
         Math.sign(initialDistance),
       );
+      // 记录链条的原始物理格：拖拽期间内容保持原位，仅靠 transform 整体位移，
+      // 避免跨格时 syncDOM 重建 innerHTML 造成的掉帧
+      state.drag.chainCells = getShiftChainPositions(
+        state.drag.curR, state.drag.curC, state.drag.chain,
+      );
+      state.drag.appliedTotal = 0;
       // 整行/列无任何空格时链不可能平移，锁定视觉位移
       if (!hasLineEmptyCell(state.board, state.drag.curR, state.drag.curC, state.drag.axis)) {
         state.drag.locked = true;
@@ -747,16 +755,20 @@ function handleDragMove(x, y) {
     if (state.drag.axis === 'row') state.drag.curC += result.applied;
     else state.drag.curR += result.applied;
     state.drag.moved = true;
-    syncDOM();
+    state.drag.appliedTotal += result.applied;
+    // 拖拽期间不调用 syncDOM：内容固定在原始格，仅靠 transform 位移，
+    // 避免跨格时重建 innerHTML 造成的掉帧；模型照常更新，落子时一次性同步
   }
 
-  state.drag.visualOffset = state.drag.axis === 'row'
+  // 视觉总位移 = 已吸附格数 × 格距 + 手指残差
+  const residual = state.drag.axis === 'row'
     ? { x: result.visualOffset, y: 0 }
     : { x: 0, y: result.visualOffset };
+  state.drag.visualOffset = residual;
   moveAnimator.follow(
-    getShiftChainPositions(state.drag.curR, state.drag.curC, state.drag.chain),
-    state.drag.visualOffset.x,
-    state.drag.visualOffset.y,
+    state.drag.chainCells,
+    state.drag.appliedTotal * state.pitch + residual.x,
+    state.drag.appliedTotal * state.pitch + residual.y,
   );
 
   if (result.constrained) {
@@ -775,6 +787,7 @@ function onPointerUp(e) {
     r: state.drag.r, c: state.drag.c,
     curR: state.drag.curR, curC: state.drag.curC,
     chain: state.drag.chain,
+    chainCells: state.drag.chainCells,
     snapshot: state.drag.snapshot,
     moved: state.drag.moved,
     visualOffset: state.drag.visualOffset,
@@ -804,6 +817,14 @@ function onPointerUp(e) {
   }
 
   if (targets.length === 1) {
+    // 拖拽期间内容停在原始格：这里一次性归位到逻辑格，
+    // 手指残差（不足一格的部分）交给 FLIP 平滑吸附
+    syncDOM();
+    moveAnimator.follow(
+      getShiftChainPositions(info.curR, info.curC, info.chain),
+      info.visualOffset.x,
+      info.visualOffset.y,
+    );
     moveAnimator.settleFollow(snapDuration);
     const target = targets[0];
     eliminate(
@@ -825,6 +846,13 @@ function onPointerUp(e) {
     state.pendingRevert = pendingRevert;
     updateLevelControls();
     const sessionId = state.levelSessionId;
+    // 内容一次性归位到逻辑格，残差平滑吸附；waiting 期间 DOM 与模型一致
+    syncDOM();
+    moveAnimator.follow(
+      getShiftChainPositions(info.curR, info.curC, info.chain),
+      info.visualOffset.x,
+      info.visualOffset.y,
+    );
     if (snapDuration > 0) setBusy(true);
     moveAnimator.settleFollow(snapDuration, () => {
       if (!sessionStillCurrent(sessionId)) return;
