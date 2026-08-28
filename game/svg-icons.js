@@ -10,7 +10,17 @@
 
 const INK = '#3D2B1F';
 const HILITE = '#FFFFFF';
-const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none"><g stroke="${INK}" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`;
+// 预置表情层：默认隐藏，由 CSS 按容器 svg 的 face-* 类点亮。
+// 消除特效只切换 class，避免每次序列化/重建 SVG 字符串。
+const FACE_LAYERS = `<g class="face face--happy">
+  <path d="M22 36q4-4 8 0M34 36q4-4 8 0M27 43q5 5 10 0" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+</g><g class="face face--shock">
+  <circle cx="26" cy="36" r="2.2" fill="${INK}"/>
+  <circle cx="38" cy="36" r="2.2" fill="${INK}"/>
+  <circle cx="32" cy="45" r="3.2" fill="${INK}"/>
+</g>`;
+
+const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none"><g stroke="${INK}" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">${body}</g>${FACE_LAYERS}</svg>`;
 
 const GLOSS = (cx, cy, rx, ry, rot = -25) =>
   `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${cx} ${cy})" fill="${HILITE}" stroke="none" opacity="0.7"/>`;

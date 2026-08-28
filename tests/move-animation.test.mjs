@@ -67,12 +67,12 @@ test('follow transfers a continuous visual offset to the chain current cells', (
   });
 
   animator.follow([{ r: 0, c: 0 }], 12, 0);
-  assert.equal(cells[0].style.transform, 'translate(12px, 0px)');
+  assert.equal(cells[0].style.transform, 'translate3d(12px, 0px, 0)');
   assert.equal(cells[0].style.transition, 'none');
 
   animator.follow([{ r: 0, c: 1 }], -28, 0);
   assert.deepEqual(cells[0].style, { transition: '', transform: '', willChange: '', zIndex: '' });
-  assert.equal(cells[1].style.transform, 'translate(-28px, 0px)');
+  assert.equal(cells[1].style.transform, 'translate3d(-28px, 0px, 0)');
 });
 
 test('settleFollow magnetically returns followed cells to the grid', () => {
@@ -155,7 +155,7 @@ test('rollback animation includes the pointer residual offset', () => {
     { fromR: 0, fromC: 2, toR: 0, toC: 0 },
   ], 200, { offsetX: 6, offsetY: 0 });
 
-  assert.equal(cell.style.transform, 'translate(86px, 0px)');
+  assert.equal(cell.style.transform, 'translate3d(86px, 0px, 0)');
 });
 
 test('rollback animation releases direct pointer-follow ownership', () => {
@@ -176,7 +176,7 @@ test('rollback animation releases direct pointer-follow ownership', () => {
   ], 200, { offsetX: 12 });
 
   assert.deepEqual(cells[0].style, { transition: '', transform: '', willChange: '', zIndex: '' });
-  assert.equal(cells[1].style.transform, 'translate(-28px, 0px)');
+  assert.equal(cells[1].style.transform, 'translate3d(-28px, 0px, 0)');
 });
 
 test('an empty rollback settles the followed cells in place', () => {
@@ -222,7 +222,7 @@ test('a newer animation blocks retained settle callbacks', () => {
   ], 200);
   scheduler.runTimer(settleTimer);
 
-  assert.equal(cell.style.transform, 'translate(-80px, 0px)');
+  assert.equal(cell.style.transform, 'translate3d(-80px, 0px, 0)');
   assert.equal(cell.style.transition, 'none');
 });
 
@@ -312,13 +312,13 @@ test('stale callbacks cannot overwrite a newer animation on the same cell', () =
     { fromR: 0, fromC: 0, toR: 0, toC: 2 },
   ], 90);
 
-  assert.equal(cell.style.transform, 'translate(-80px, 0px)');
+  assert.equal(cell.style.transform, 'translate3d(-80px, 0px, 0)');
   assert.equal(cell.style.transition, 'none');
 
   scheduler.runFrame(oldFrame);
   scheduler.runTimer(oldTimer);
 
-  assert.equal(cell.style.transform, 'translate(-80px, 0px)');
+  assert.equal(cell.style.transform, 'translate3d(-80px, 0px, 0)');
   assert.equal(cell.style.transition, 'none');
 });
 
@@ -349,7 +349,7 @@ test('a newer animation cancels pending work for the same cell', () => {
   assert.equal(scheduler.cancelledTimers.has(oldTimer), true);
 
   scheduler.runTimer(oldTimer);
-  assert.equal(cell.style.transform, 'translate(-40px, 0px)');
+  assert.equal(cell.style.transform, 'translate3d(-40px, 0px, 0)');
   assert.equal(cell.style.transition, 'none');
 });
 

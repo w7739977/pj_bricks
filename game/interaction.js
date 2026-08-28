@@ -4,7 +4,7 @@ import {
   createShiftChain, createShiftRevertMoves, getShiftChainPositions,
   cloneBoard, restoreBoard, hasLineEmptyCell,
 } from './board.js';
-import { ICON_LABELS, ICON_NAMES, ICONS, withFace } from './svg-icons.js';
+import { ICON_LABELS, ICON_NAMES, ICONS } from './svg-icons.js';
 import { createBrowserDialogManager } from './dialogs.js';
 import { createLevelSession } from './level-session.js';
 import { createRandomSeed, createSeededRng, getLevelConfig } from './levels.js';
@@ -408,19 +408,31 @@ function eliminate(a, b) {
   state.board[a.r][a.c] = null;
   state.board[b.r][b.c] = null;
   setBusy(true);
+  // 表情阶段：只点亮预置表情层，不重建 SVG（旧实现 outerHTML 序列化+重解析）
   [a, b].forEach(p => {
     const svg = p.el.querySelector('svg.veg');
-    if (svg) p.el.innerHTML = withFace(svg.outerHTML, 'shock');
+    if (svg) svg.classList.add('face-shock');
   });
-  scheduleForSession(() => {
-    [a, b].forEach(p => {
-      p.el.classList.remove('selected', 'hint');
+  const cells = [a, b];
+  const finishEliminate = () => {
+    cells.forEach(p => {
+      p.el.classList.remove('selected', 'hint', 'pop');
       p.el.classList.add('empty');
       p.el.innerHTML = '';
       delete p.el.dataset.rendered;
     });
     setBusy(false);
     afterEliminate();
+  };
+  scheduleForSession(() => {
+    const popDuration = motionDuration(130);
+    if (popDuration === 0) {
+      finishEliminate();
+      return;
+    }
+    // 消失阶段：缩小淡出动画，动画结束后再清理 DOM
+    cells.forEach(p => p.el.classList.add('pop'));
+    scheduleForSession(finishEliminate, popDuration);
   }, motionDuration(180));
   cancelSelection();
 }
@@ -529,8 +541,13 @@ function afterEliminate() {
     void completeCurrentLevel();
     return;
   }
-  // 死局口径：连"整行/列拖拽可达"的解都不存在才算死局（深度搜索）
-  if (!hasAnySolvablePairDeep(state.board)) void handleDeadlock();
+  if (findSolvablePair(state.board)) return;
+  // 死局口径：连"整行/列拖拽可达"的解都不存在才算死局（深度搜索）。
+  // 深搜最坏 ~140ms，延后一拍让位给消除动画收尾，避免主线程冻结卡在特效上
+  scheduleForSession(() => {
+    if (state.phase !== 'playing' || state.busy) return;
+    if (!hasAnySolvablePairDeep(state.board)) void handleDeadlock();
+  }, 30);
 }
 
 function isAllCleared() {

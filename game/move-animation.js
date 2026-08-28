@@ -79,7 +79,7 @@ export function createMoveAnimator({
         el.style.willChange = 'transform';
         el.style.zIndex = '10';
       }
-      el.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+      el.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
     }
     following = next;
   }
@@ -126,7 +126,7 @@ export function createMoveAnimator({
       const dx = (move.fromC - move.toC) * pitch + offsetX;
       const dy = (move.fromR - move.toR) * pitch + offsetY;
       el.style.transition = 'none';
-      el.style.transform = `translate(${dx}px, ${dy}px)`;
+      el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
       void el.offsetWidth;
       transitionToRest(el, duration, () => {});
     }
