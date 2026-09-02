@@ -706,9 +706,9 @@ function onPointerDown(e) {
   updateLevelControls();
 }
 
-// ---- 拖拽轨迹线：跟随棋子移动，指示其当前可消除方向 ----
-// 轴锁定前：行+列均亮；水平拖动后只亮棋子所在列（竖直则亮所在行），
-// 且只增强空白格——已有棋子的格子不显示，轨迹干净可读。
+// ---- 拖拽轨迹线：增强棋子移动所沿的整行/整列，辅助确认匹配轨迹 ----
+// 水平拖动 → 亮棋子所在整行；竖直拖动 → 亮所在整列；轴未定时行列均亮。
+// 只增强空白格，已有棋子的格子不染色。
 // 自适应对比由 CSS mix-blend-mode:difference 完成（浅底加深、深底提亮）。
 function updateDragTrace() {
   const els = state.cellEls;
@@ -718,14 +718,14 @@ function updateDragTrace() {
       els[r][c].classList.remove('trace');
   const d = state.drag;
   if (!d || d.locked) return;
-  const line = !d.axis
-    ? null // 轴未定：行列均亮
+  const onLine = !d.axis
+    ? () => true // 轴未定：行列均亮
     : d.axis === 'row'
-      ? (r, c) => c === d.curC // 水平移动 → 跟随所在列
-      : (r, c) => r === d.curR; // 竖直移动 → 跟随所在行
+      ? r => r === d.r // 水平移动 → 移动所沿的整行
+      : c => c === d.c; // 竖直移动 → 移动所沿的整列
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
-      if (state.board[r][c] === null && (!line || line(r, c)))
+      if (state.board[r][c] === null && onLine(r, c))
         els[r][c].classList.add('trace');
 }
 
