@@ -324,11 +324,14 @@ function syncDOM() {
       const el = state.cellEls[r][c];
       const v = state.board[r][c];
       if (v === null) {
-        if (!el.classList.contains('empty')) {
-          el.classList.add('empty');
+        el.classList.add('empty');
+        // 清空内容以"渲染过"为判据（dataset.rendered 残留即清），
+        // 不能以 empty 类是否刚加为判据——拖拽轨迹会提前补 empty 类，
+        // 若据此跳过 innerHTML 清理，transform 归零后原格会露出棋子残影
+        if (el.dataset.rendered !== undefined) {
           el.innerHTML = '';
+          delete el.dataset.rendered;
         }
-        delete el.dataset.rendered;
       } else {
         if (el.classList.contains('empty')) el.classList.remove('empty');
         const iconName = ICON_NAMES[v];
