@@ -1,4 +1,4 @@
-// 最终棋子贴图：Fluent Emoji Flat（MIT）形体 + OpenMoji 风格深棕描边。
+// 最终棋子贴图：纯 Fluent Emoji Flat（MIT）形体（无描边，20260827 混合描边回退）。
 // 用法：node tools/apply-final-icons.mjs
 // 产出：game/icon-bodies.mjs + 重写 game/svg-icons.js 的贴图源。
 // 经 Iconify API 拉取，构建期内联，运行时零外部请求。
@@ -14,9 +14,7 @@ const FLAT_MAP = {
   cherry: ['cherries'], peach: ['peach'], watermelon: ['watermelon'],
 };
 
-// 描边口径对齐 OpenMoji 观感：约画布 3.4% 的线宽、圆角衔接
-const INK = '#3D2B1F';
-const STROKE = 1.1; // 32 画布 → 64 网格后约 2.2px
+const innerOf = svg => svg.match(/<svg[^>]*>([\s\S]*)<\/svg>/)[1].trim();
 
 async function fetchFlat(name) {
   for (const n of FLAT_MAP[name]) {
@@ -29,23 +27,18 @@ async function fetchFlat(name) {
   throw new Error(`no fluent icon for ${name}`);
 }
 
-const innerOf = svg => svg.match(/<svg[^>]*>([\s\S]*)<\/svg>/)[1].trim();
-
 console.log('拉取 Fluent Emoji Flat…');
 const bodies = {};
 for (const name of ICON_NAMES) {
   const inner = innerOf(await fetchFlat(name))
     .replace(/\s(width|height)="[^"]*"/g, '');
-  // 32 画布 → 64 网格居中；描边加在外层 g，路径自身的 fill 不受影响
-  bodies[name] =
-    `<g transform="scale(2)" stroke="${INK}" stroke-width="${STROKE}" ` +
-    `stroke-linecap="round" stroke-linejoin="round">\n${inner}\n</g>`;
+  // 32 画布 → 64 网格（Fluent Flat 本身带柔和高光，无描边）
+  bodies[name] = `<g transform="scale(2)">\n${inner}\n</g>`;
   process.stdout.write(`  ${name} ok\n`);
 }
 
 writeFileSync('game/icon-bodies.mjs',
-  `// 棋子贴图数据：Fluent Emoji Flat（MIT，Copyright (c) Microsoft Corporation）\n` +
-  `// 形体 + 项目自加的深棕描边层。由 tools/apply-final-icons.mjs 生成，勿手改。\n\n` +
+  `// 棋子贴图数据：Fluent Emoji Flat（MIT，Copyright (c) Microsoft Corporation）。\n` +
   `export const ICON_BODIES = {\n` +
   ICON_NAMES.map(n => `  ${n}: \`\n${bodies[n]}\`,`).join('\n') +
   `\n};\n`);
@@ -53,7 +46,7 @@ console.log('已生成 game/icon-bodies.mjs');
 
 // ---- 重写 svg-icons.js ----
 const iconEntries = ICON_NAMES.map(n => `  ${n}: S("${n}", BODIES.${n}),`).join('\n\n');
-const next = `// 棋子图标：Fluent Emoji Flat（MIT，© Microsoft）形体 + OpenMoji 风格深棕描边，
+const next = `// 棋子图标：Fluent Emoji Flat（MIT，© Microsoft）形体，
 // 由 tools/apply-final-icons.mjs 构建期内联（运行时零外部请求）。
 // 表情层（消除特效的震惊/开心脸）为项目自绘，叠加在贴图之上。
 // 顺序对应 board.js 中的图案编号。

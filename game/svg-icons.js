@@ -1,4 +1,4 @@
-// 棋子图标：Fluent Emoji Flat（MIT，© Microsoft）形体 + OpenMoji 风格深棕描边，
+// 棋子图标：Fluent Emoji Flat（MIT，© Microsoft）形体，
 // 由 tools/apply-final-icons.mjs 构建期内联（运行时零外部请求）。
 // 表情层（消除特效的震惊/开心脸）为项目自绘，叠加在贴图之上。
 // 顺序对应 board.js 中的图案编号。

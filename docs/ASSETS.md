@@ -3,7 +3,7 @@
 ## 棋子贴图（game/icon-bodies.mjs）
 - 形体来源：Fluent Emoji Flat（https://github.com/microsoft/fluentui-emoji）
 - 授权：MIT License，Copyright (c) Microsoft Corporation
-- 修改：项目按 CC0 选图页结论加工——叠加 OpenMoji 风格深棕描边层
+- 修改：项目按 CC0 选图页结论加工——未修改（20260827 混合描边方案已回退）
   （#3D2B1F，线宽约画布 3.4%，圆角衔接），32→64 画布居中缩放
 - 再生成：`node tools/apply-final-icons.mjs`
 
