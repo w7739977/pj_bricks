@@ -244,9 +244,10 @@ body {
      光栅化最大开销（实测拖垮帧率至 ~40FPS），贴纸感由粗描边+高光承担 */
 }
 
-/* 拖拽期间：被拖动链条的原格被 vacated 透明化，棋子 svg 单独移动，
-   需自带米白格底与描边，移动途中才不丢失格子的填充与边框 */
-.cell.vacated .veg {
+/* 拖拽期间：链条棋子 svg 单独移动，需自带米白格底与描边，移动
+   途中才不丢失格子的填充与边框。挂在 dragging 类（链条成员格）
+   上而非 vacated——链条中段棋子的原格模型仍记为被占，没有 vacated */
+.cell.dragging .veg {
   background: var(--color-tile);
   border: 2px solid #5C4A32;
   border-radius: var(--radius-cell);
