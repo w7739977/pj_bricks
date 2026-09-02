@@ -702,7 +702,25 @@ function onPointerDown(e) {
     blockedHintAt: 0,
   };
   boardEl().setPointerCapture(e.pointerId);
+  showDragTrace(cell.r, cell.c);
   updateLevelControls();
+}
+
+// ---- 拖拽轨迹线：抓取棋子时增强其所在行+列，辅助确认匹配轨迹 ----
+// 自适应对比由 CSS mix-blend-mode:difference 完成（浅底加深、深底提亮）
+function showDragTrace(r, c) {
+  const els = state.cellEls;
+  if (!els?.length) return;
+  for (let i = 0; i < COLS; i++) els[r]?.[i]?.classList.add('trace');
+  for (let i = 0; i < ROWS; i++) els[i]?.[c]?.classList.add('trace');
+}
+
+function hideDragTrace() {
+  const els = state.cellEls;
+  if (!els?.length) return;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      els[r]?.[c]?.classList.remove('trace');
 }
 
 let dragFramePending = false;
@@ -818,6 +836,7 @@ function onPointerUp(e) {
     visualOffset: state.drag.visualOffset,
   };
   state.drag = null;
+  hideDragTrace();
   updateLevelControls();
 
   if (!wasDrag) {
@@ -891,6 +910,7 @@ function onPointerCancel(e) {
   if (!state.drag || !dragInput.release(e.pointerId)) return;
   const info = state.drag;
   state.drag = null;
+  hideDragTrace();
   updateLevelControls();
   if (!info.dragged) return;
   if (!info.moved) {
