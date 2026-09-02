@@ -245,24 +245,18 @@ export function restoreBoard(board, snap) {
       board[r][c] = snap[r][c];
 }
 
-// ---- 深度死局检测：考虑整行/列拖拽可达的盘面 ----
-// 定义：若从当前盘面出发，经任意次"整段棋子滑入相邻空位"后存在直接配对，
-// 则不判死局。搜索采用"宏移动"（一次滑 k 格，k ≤ 前方空位连续数）：
-// 与逐格单步数学等价（滑 k 格 = k 次合法单步），但搜索深度从"格数"
-// 塌缩为"段数"，状态爆炸问题解决，小节点预算内即可穷尽/找到解。
-// BFS + 状态去重 + 深度/节点上限。
+// ---- 死局检测：拖拽可达口径 ----
+// 游戏规则：拖拽要么消除并落位，要么整体还原——不存在"滑过去但没消除、
+// 棋子留在新位置"的中间态。因此可解 = 存在直接配对（零拖拽），或存在
+// 某一次拖拽，拖完后产生**涉及被拖棋子**的直接配对（消除目标必须属于
+// 被抓棋子）。多步滑移中转在真实规则里不可达，不作搜索。
+// 拖拽主体是"链"：抓取段内任意子链（抓中间一颗时只有其前方部分跟随），
+// 枚举按子链口径展开。
 
-function boardKey(board) {
-  let key = '';
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-      key += board[r][c] === null ? '.' : String.fromCharCode(65 + board[r][c] % 60);
-  return key;
-}
-
-// 枚举所有"整段滑 k 格"（k=1..前方连续空位数），等价于该段的全部合法单步序列
-function enumerateSingleShifts(board) {
-  const shifts = [];
+// 枚举所有合法拖拽：段的任意子链（正向抓取=后缀链，反向抓取=前缀链）
+// 沿拖拽方向滑 k 格（k=1..前方连续空位数）
+function enumerateDragMoves(board) {
+  const moves = [];
   const tryLine = (isRow, fixed, len) => {
     const at = i => isRow ? board[fixed][i] : board[i][fixed];
     let i = 0;
@@ -270,21 +264,23 @@ function enumerateSingleShifts(board) {
       if (at(i) === null) { i++; continue; }
       let j = i;
       while (j + 1 < len && at(j + 1) !== null) j++;
-      // 段 [i, j]：数出两侧连续空位长度，展开为 k=1..run 的滑步
       let leftRun = 0;
       while (i - 1 - leftRun >= 0 && at(i - 1 - leftRun) === null) leftRun++;
       let rightRun = 0;
       while (j + 1 + rightRun < len && at(j + 1 + rightRun) === null) rightRun++;
-      for (let k = 1; k <= leftRun; k++)
-        shifts.push({ axis: isRow ? 'row' : 'col', fixed, lo: i, hi: j, dir: -1, dist: k });
-      for (let k = 1; k <= rightRun; k++)
-        shifts.push({ axis: isRow ? 'row' : 'col', fixed, lo: i, hi: j, dir: 1, dist: k });
+      // 正向：抓取点 split，链 = [split..hi]；反向：链 = [lo..split]
+      for (let split = i; split <= j; split++) {
+        for (let k = 1; k <= rightRun; k++)
+          moves.push({ axis: isRow ? 'row' : 'col', fixed, lo: split, hi: j, dir: 1, dist: k });
+        for (let k = 1; k <= leftRun; k++)
+          moves.push({ axis: isRow ? 'row' : 'col', fixed, lo: i, hi: split, dir: -1, dist: k });
+      }
       i = j + 1;
     }
   };
   for (let r = 0; r < ROWS; r++) tryLine(true, r, COLS);
   for (let c = 0; c < COLS; c++) tryLine(false, c, ROWS);
-  return shifts;
+  return moves;
 }
 
 function applySingleShift(board, s) {
@@ -304,37 +300,29 @@ function applySingleShift(board, s) {
   return next;
 }
 
-export function findSolvablePairDeep(
-  board,
-  // 宏移动搜索：深度=段滑步次数（而非格数），6000 节点足够穷尽端局；
-  // 超限时保守判死局（宁可多重排，不让玩家卡在理论死局）
-  { maxDepth = 8, maxNodes = 6000 } = {},
-) {
+export function findSolvablePairDeep(board) {
   const direct = findSolvablePair(board);
   if (direct) return { direct: true, depth: 0, pair: direct, board: null };
 
-  const visited = new Set([boardKey(board)]);
-  let frontier = [board];
-  for (let depth = 1; depth <= maxDepth; depth++) {
-    const nextFrontier = [];
-    for (const state of frontier) {
-      for (const shift of enumerateSingleShifts(state)) {
-        const next = applySingleShift(state, shift);
-        const key = boardKey(next);
-        if (visited.has(key)) continue;
-        visited.add(key);
-        if (visited.size > maxNodes) return { direct: false, depth: -1, pair: null, board: null };
-        const pair = findSolvablePair(next);
-        if (pair) return { direct: false, depth, pair, shiftFrom: shift, board: next };
-        nextFrontier.push(next);
-      }
+  for (const move of enumerateDragMoves(board)) {
+    const next = applySingleShift(board, move);
+    const pair = findSolvablePair(next);
+    if (!pair) continue;
+    // 消除目标必须涉及被拖链上的棋子（目标属于被抓棋子）
+    const d = move.dist * move.dir;
+    const moved = new Set();
+    for (let i = move.lo; i <= move.hi; i++) {
+      if (move.axis === 'row') moved.add(i + d);
+      else moved.add(i);
     }
-    if (nextFrontier.length === 0) break;
-    frontier = nextFrontier;
+    const involves = move.axis === 'row'
+      ? (pair.r1 === move.fixed && moved.has(pair.c1)) || (pair.r2 === move.fixed && moved.has(pair.c2))
+      : (pair.c1 === move.fixed && moved.has(pair.r1)) || (pair.c2 === move.fixed && moved.has(pair.r2));
+    if (involves) return { direct: false, depth: 1, pair, shiftFrom: move, board: next };
   }
   return { direct: false, depth: -1, pair: null, board: null };
 }
 
-export function hasAnySolvablePairDeep(board, options) {
-  return findSolvablePairDeep(board, options).pair !== null;
+export function hasAnySolvablePairDeep(board) {
+  return findSolvablePairDeep(board).pair !== null;
 }

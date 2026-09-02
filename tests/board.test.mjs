@@ -272,3 +272,36 @@ test('same-icon segments always solvable via slide', () => {
   b[0][0] = 2; b[5][5] = 2; b[9][9] = 2;
   assert.equal(hasAnySolvablePairDeep(b), true);
 });
+
+// 回归：screenshot6 用户实局盘面（8 对棋子）。旧"多步滑移"口径误判有解，
+// 但拖拽规则是"无消除即还原"，多步中转不可达——真实判定应为死局。
+// 且配对若不涉及被拖链上的棋子（消除目标必须属于被抓棋子），同样不算可达。
+test('screenshot6 board is deadlock: solution needs two non-eliminating drags (user report regression)', () => {
+  const b = deepEmptyBoard();
+  // A:(0,0)(13,4) B:(0,6)(8,0) C:(0,8)(12,4) D:(0,9)(12,9)
+  // E:(5,0)(11,9) F:(8,5)(12,0) G:(8,9)(13,5) H:(12,7)(13,0)
+  b[0][0] = 1; b[13][4] = 1;
+  b[0][6] = 2; b[8][0] = 2;
+  b[0][8] = 3; b[12][4] = 3;
+  b[0][9] = 4; b[12][9] = 4;
+  b[5][0] = 5; b[11][9] = 5;
+  b[8][5] = 6; b[12][0] = 6;
+  b[8][9] = 7; b[13][5] = 7;
+  b[12][7] = 8; b[13][0] = 8;
+  assert.equal(hasAnySolvablePairDeep(b), false);
+  const result = findSolvablePairDeep(b);
+  assert.equal(result.pair, null);
+});
+
+// 拖拽后若只有"不涉及被拖链"的配对出现，不算可达（目标必须属于被抓棋子）
+test('pair not involving dragged chain does not count as reachable', () => {
+  const b = deepEmptyBoard();
+  // 第 3 行拖走障碍后，第 0 行的两颗同色直连——但被拖的是第 3 行的链
+  b[0][3] = 9; b[0][6] = 9;   // 中间 (0,4)(0,5) 空？不，让它们被占：
+  b[0][4] = 10; b[0][5] = 11;
+  // 第 3 行一段可拖入 (0,4)(0,5) 前方？构造：被拖链滑走后 (0,4)(0,5) 仍在，
+  // 第 3 行移动与任何配对无关——只有第 0 行 (0,3)/(0,6) 隔着 (0,4)(0,5) 不直连。
+  // 再放一颗与被拖链同排的同色，使链滑走时无自身配对：
+  b[3][0] = 12; b[3][1] = 13; b[3][2] = 14; b[3][3] = 15; // 第 3 行段
+  assert.equal(hasAnySolvablePairDeep(b), false);
+});
