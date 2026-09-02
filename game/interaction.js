@@ -1,6 +1,6 @@
 import {
   ROWS, COLS, createBoard, findTargets, findSolvablePair,
-  hasAnySolvablePair, findSolvablePairDeep, reshuffleInPlace, applyShift,
+  hasAnySolvablePair, hasAnySolvablePairDeep, findSolvablePairDeep, reshuffleInPlace, applyShift,
   createShiftChain, createShiftRevertMoves, getShiftChainPositions,
   cloneBoard, restoreBoard, hasLineEmptyCell,
 } from './board.js';
