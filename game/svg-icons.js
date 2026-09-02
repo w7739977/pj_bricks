@@ -1,13 +1,12 @@
-// 棋子图标：贴图采用 OpenMoji（CC BY-SA 4.0，https://openmoji.org），
-// 由 tools/apply-openmoji.mjs 构建期内联（运行时零外部请求）。
-// 表情层（消除特效的震惊/开心脸）仍为项目自绘，叠加在贴图之上。
+// 棋子图标：Fluent Emoji Flat（MIT，© Microsoft）形体 + OpenMoji 风格深棕描边，
+// 由 tools/apply-final-icons.mjs 构建期内联（运行时零外部请求）。
+// 表情层（消除特效的震惊/开心脸）为项目自绘，叠加在贴图之上。
 // 顺序对应 board.js 中的图案编号。
 
-import { OPENMOJI_BODIES } from './openmoji-bodies.mjs';
+import { ICON_BODIES } from './icon-bodies.mjs';
 
 const INK = '#3D2B1F';
 // 预置表情层：默认隐藏，由 CSS 按容器 svg 的 face-* 类点亮。
-// 消除特效只切换 class，避免每次序列化/重建 SVG 字符串。
 const FACE_LAYERS = `<g class="face face--happy">
   <path d="M22 36q4-4 8 0M34 36q4-4 8 0M27 43q5 5 10 0" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
 </g><g class="face face--shock">
@@ -18,7 +17,7 @@ const FACE_LAYERS = `<g class="face face--happy">
 
 const S = (name, body) => `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none">${body}${FACE_LAYERS}</svg>`;
 
-const BODIES = OPENMOJI_BODIES;
+const BODIES = ICON_BODIES;
 
 export const ICON_NAMES = ["broccoli","lettuce","tomato","carrot","corn","eggplant","onion","potato","cucumber","pepper","pumpkin","grape","apple","strawberry","banana","orange","pear","cherry","peach","watermelon"];
 
