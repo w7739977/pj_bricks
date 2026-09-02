@@ -38,7 +38,7 @@ for (const name of ICON_NAMES) {
     .replace(/\s(width|height)="[^"]*"/g, '');
   // 32 画布 → 64 网格居中；描边加在外层 g，路径自身的 fill 不受影响
   bodies[name] =
-    `<g transform="translate(16 16) scale(2)" stroke="${INK}" stroke-width="${STROKE}" ` +
+    `<g transform="scale(2)" stroke="${INK}" stroke-width="${STROKE}" ` +
     `stroke-linecap="round" stroke-linejoin="round">\n${inner}\n</g>`;
   process.stdout.write(`  ${name} ok\n`);
 }
