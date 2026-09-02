@@ -237,6 +237,9 @@ body {
   height: 88%;
   overflow: visible;
   pointer-events: none;
+  /* 拖拽期间 zIndex:10 施加在 svg 上（见 move-animation.js follow），
+     svg 需定位后才参与 z-index 排序，才能浮在亮线与其它格子之上 */
+  position: relative;
   /* 性能：移除 drop-shadow 滤镜——140 个实例的实时高斯模糊是
      光栅化最大开销（实测拖垮帧率至 ~40FPS），贴纸感由粗描边+高光承担 */
 }

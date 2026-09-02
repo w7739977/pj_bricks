@@ -12,6 +12,21 @@ export function createMoveAnimator({
   let following = new Set();
   let lastFollowSig = '';
 
+  // 拖拽跟随的位移施加在棋子 svg 上而非格子本体：格子留在原位，
+  // 轨迹亮线（格子的 ::before）才能钉在真实格位；svg 需有定位
+  // （styles.css 中 .cell .veg { position: relative }）z-index 才生效
+  function pieceOf(el) {
+    return el.querySelector?.('.veg') || el;
+  }
+
+  function clearStyles(target) {
+    target.style.transition = '';
+    target.style.transform = '';
+    // 归还拖拽期间申请的合成层与顶层绘制位置
+    target.style.willChange = '';
+    target.style.zIndex = '';
+  }
+
   function cancelActive(el) {
     const previous = active.get(el);
     if (!previous) return;
@@ -22,11 +37,9 @@ export function createMoveAnimator({
 
   function clearCell(el) {
     cancelActive(el);
-    el.style.transition = '';
-    el.style.transform = '';
-    // 归还拖拽期间申请的合成层与顶层绘制位置
-    el.style.willChange = '';
-    el.style.zIndex = '';
+    // 同时清格子与棋子两层：cancelAll 可能打断动画中/拖拽中的元素
+    clearStyles(el);
+    clearStyles(pieceOf(el));
   }
 
   function releaseFollowing() {
@@ -36,20 +49,20 @@ export function createMoveAnimator({
     for (const el of cells) clearCell(el);
   }
 
-  function transitionToRest(el, duration, onComplete) {
+  function transitionToRest(el, duration, onComplete, target = el) {
     const token = Symbol('move-animation');
     const record = { token, frameId: null, timerId: null };
     active.set(el, record);
     record.frameId = requestFrame(() => {
       if (active.get(el)?.token !== token) return;
-      el.style.transition = `transform ${duration}ms ${EASING}`;
-      el.style.transform = '';
+      target.style.transition = `transform ${duration}ms ${EASING}`;
+      target.style.transform = '';
       record.timerId = setTimer(() => {
         if (active.get(el)?.token !== token) return;
-        el.style.transition = '';
-        el.style.transform = '';
-        el.style.willChange = '';
-        el.style.zIndex = '';
+        target.style.transition = '';
+        target.style.transform = '';
+        target.style.willChange = '';
+        target.style.zIndex = '';
         active.delete(el);
         onComplete();
       }, duration + 30);
@@ -72,14 +85,17 @@ export function createMoveAnimator({
 
     for (const el of next) {
       cancelActive(el);
-      // transition 只需在首次加入时压掉 CSS 过渡；will-change/z-index
-      // 提升合成层与绘制层级，避免拖拽中反复光栅化大阴影图层
+      // will-change/z-index 提到棋子 svg 上：棋子浮在其它格子的
+      // 亮线之上（符合"棋子不增强、空格增强"），且避免拖拽中
+      // 反复光栅化大阴影图层
+      const piece = pieceOf(el);
+      // transition 只需在首次加入时压掉 CSS 过渡
       if (!following.has(el)) {
-        el.style.transition = 'none';
-        el.style.willChange = 'transform';
-        el.style.zIndex = '10';
+        piece.style.transition = 'none';
+        piece.style.willChange = 'transform';
+        piece.style.zIndex = '10';
       }
-      el.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
+      piece.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
     }
     following = next;
   }
@@ -102,7 +118,8 @@ export function createMoveAnimator({
     for (const el of cells) {
       cancelActive(el);
       void el.offsetWidth;
-      transitionToRest(el, duration, completeCell);
+      // 回弹作用在棋子 svg 上（与 follow 的位移目标一致）
+      transitionToRest(el, duration, completeCell, pieceOf(el));
     }
   }
 
