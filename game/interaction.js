@@ -543,11 +543,16 @@ function afterEliminate() {
   }
   if (findSolvablePair(state.board)) return;
   // 死局口径：连"整行/列拖拽可达"的解都不存在才算死局（深度搜索）。
-  // 深搜最坏 ~140ms，延后一拍让位给消除动画收尾，避免主线程冻结卡在特效上
-  scheduleForSession(() => {
-    if (state.phase !== 'playing' || state.busy) return;
+  // 深搜延后一拍让位给消除动画；期间若盘面处于过渡态则顺延重查（不跳过）
+  const checkDeadlock = () => {
+    if (state.phase !== 'playing') return;
+    if (state.busy || state.drag || state.mode !== 'idle' || state.pendingRevert) {
+      scheduleForSession(checkDeadlock, 120);
+      return;
+    }
     if (!hasAnySolvablePairDeep(state.board)) void handleDeadlock();
-  }, 30);
+  };
+  scheduleForSession(checkDeadlock, 30);
 }
 
 function isAllCleared() {
@@ -591,7 +596,9 @@ async function completeCurrentLevel() {
 }
 
 async function handleDeadlock() {
-  if (state.busy || state.phase !== 'playing') return;
+  // 兜底守卫：过渡态（拖拽/多目标待定/动画窗口）绝不弹死局框
+  if (state.busy || state.drag || state.mode !== 'idle' || state.pendingRevert ||
+      state.phase !== 'playing') return;
   const sessionId = state.levelSessionId;
   const outcome = state.levelSession.deadlock();
   setBusy(true);

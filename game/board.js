@@ -245,9 +245,12 @@ export function restoreBoard(board, snap) {
       board[r][c] = snap[r][c];
 }
 
-// ---- 深度死局检测：考虑整行/列单步拖拽可达的盘面 ----
-// 定义：若从当前盘面出发，经任意次"一段连续棋子向相邻空位平移1格"后
-// 存在直接配对，则不判死局。BFS + 状态去重 + 深度/节点上限。
+// ---- 深度死局检测：考虑整行/列拖拽可达的盘面 ----
+// 定义：若从当前盘面出发，经任意次"整段棋子滑入相邻空位"后存在直接配对，
+// 则不判死局。搜索采用"宏移动"（一次滑 k 格，k ≤ 前方空位连续数）：
+// 与逐格单步数学等价（滑 k 格 = k 次合法单步），但搜索深度从"格数"
+// 塌缩为"段数"，状态爆炸问题解决，小节点预算内即可穷尽/找到解。
+// BFS + 状态去重 + 深度/节点上限。
 
 function boardKey(board) {
   let key = '';
@@ -257,6 +260,7 @@ function boardKey(board) {
   return key;
 }
 
+// 枚举所有"整段滑 k 格"（k=1..前方连续空位数），等价于该段的全部合法单步序列
 function enumerateSingleShifts(board) {
   const shifts = [];
   const tryLine = (isRow, fixed, len) => {
@@ -266,10 +270,15 @@ function enumerateSingleShifts(board) {
       if (at(i) === null) { i++; continue; }
       let j = i;
       while (j + 1 < len && at(j + 1) !== null) j++;
-      if (i - 1 >= 0 && at(i - 1) === null)
-        shifts.push({ axis: isRow ? 'row' : 'col', fixed, lo: i, hi: j, dir: -1 });
-      if (j + 1 < len && at(j + 1) === null)
-        shifts.push({ axis: isRow ? 'row' : 'col', fixed, lo: i, hi: j, dir: 1 });
+      // 段 [i, j]：数出两侧连续空位长度，展开为 k=1..run 的滑步
+      let leftRun = 0;
+      while (i - 1 - leftRun >= 0 && at(i - 1 - leftRun) === null) leftRun++;
+      let rightRun = 0;
+      while (j + 1 + rightRun < len && at(j + 1 + rightRun) === null) rightRun++;
+      for (let k = 1; k <= leftRun; k++)
+        shifts.push({ axis: isRow ? 'row' : 'col', fixed, lo: i, hi: j, dir: -1, dist: k });
+      for (let k = 1; k <= rightRun; k++)
+        shifts.push({ axis: isRow ? 'row' : 'col', fixed, lo: i, hi: j, dir: 1, dist: k });
       i = j + 1;
     }
   };
@@ -280,23 +289,24 @@ function enumerateSingleShifts(board) {
 
 function applySingleShift(board, s) {
   const next = cloneBoard(board);
+  const d = s.dist * s.dir;
   if (s.axis === 'row') {
-    if (s.dir > 0) {
-      for (let i = s.hi; i >= s.lo; i--) { next[s.fixed][i + 1] = next[s.fixed][i]; next[s.fixed][i] = null; }
+    if (d > 0) {
+      for (let i = s.hi; i >= s.lo; i--) { next[s.fixed][i + d] = next[s.fixed][i]; next[s.fixed][i] = null; }
     } else {
-      for (let i = s.lo; i <= s.hi; i++) { next[s.fixed][i - 1] = next[s.fixed][i]; next[s.fixed][i] = null; }
+      for (let i = s.lo; i <= s.hi; i++) { next[s.fixed][i + d] = next[s.fixed][i]; next[s.fixed][i] = null; }
     }
-  } else if (s.dir > 0) {
-    for (let i = s.hi; i >= s.lo; i--) { next[i + 1][s.fixed] = next[i][s.fixed]; next[i][s.fixed] = null; }
+  } else if (d > 0) {
+    for (let i = s.hi; i >= s.lo; i--) { next[i + d][s.fixed] = next[i][s.fixed]; next[i][s.fixed] = null; }
   } else {
-    for (let i = s.lo; i <= s.hi; i++) { next[i - 1][s.fixed] = next[i][s.fixed]; next[i][s.fixed] = null; }
+    for (let i = s.lo; i <= s.hi; i++) { next[i + d][s.fixed] = next[i][s.fixed]; next[i][s.fixed] = null; }
   }
   return next;
 }
 
 export function findSolvablePairDeep(
   board,
-  // maxNodes 6000：端局稀疏盘实测 ~140ms 内出结果，避免消除回调阻塞主线程；
+  // 宏移动搜索：深度=段滑步次数（而非格数），6000 节点足够穷尽端局；
   // 超限时保守判死局（宁可多重排，不让玩家卡在理论死局）
   { maxDepth = 8, maxNodes = 6000 } = {},
 ) {

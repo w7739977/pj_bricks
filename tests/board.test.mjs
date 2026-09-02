@@ -236,3 +236,39 @@ test('hasAnySolvablePairDeep mirrors findSolvablePairDeep', () => {
   assert.equal(hasAnySolvablePair(board), false);
   assert.equal(hasAnySolvablePairDeep(board), true);
 });
+
+// 回归：screenshot4/用户日志盘面——解需把行首对子整排拖 8 格。
+// 旧的逐格 BFS 在 6000 节点内到不了第 8 层而误判死局；宏移动搜索第 1 层即命中
+test('deep search finds pair-aligned-by-8-shift solution (user report regression)', () => {
+  const b = deepEmptyBoard();
+  b[0][0] = 15; b[0][1] = 4; b[11][9] = 4; b[12][9] = 15;
+  const result = findSolvablePairDeep(b);
+  assert.equal(result.direct, false);
+  assert.ok(result.pair, `expected solvable, got ${JSON.stringify(result)}`);
+  assert.equal(hasAnySolvablePairDeep(b), true);
+});
+
+// 宏移动与单步等价性抽查：单步可达的最浅解深度（按格计）大于宏深度
+test('macro search depth reflects segment slides, not cell steps', () => {
+  const b = deepEmptyBoard();
+  // 3@(0,0) 需整排滑 9 格到 (0,9) 才与 3@(12,9) 同列直连：宏深度应为 1
+  b[0][0] = 3; b[12][9] = 3;
+  const result = findSolvablePairDeep(b);
+  assert.ok(result.pair, `expected solvable, got ${JSON.stringify(result)}`);
+  assert.equal(result.depth, 1);
+});
+
+test('true deadlock with two distinct far pieces still detected', () => {
+  const b = deepEmptyBoard();
+  b[0][0] = 5; b[13][9] = 9;
+  assert.equal(hasAnySolvablePairDeep(b), false);
+  const result = findSolvablePairDeep(b);
+  assert.equal(result.pair, null);
+});
+
+// 全同图标双段：任意位置都直连/一步可达，必须判可解
+test('same-icon segments always solvable via slide', () => {
+  const b = deepEmptyBoard();
+  b[0][0] = 2; b[5][5] = 2; b[9][9] = 2;
+  assert.equal(hasAnySolvablePairDeep(b), true);
+});
