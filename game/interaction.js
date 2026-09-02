@@ -715,6 +715,12 @@ function onPointerDown(e) {
 function updateDragTrace() {
   const els = state.cellEls;
   if (!els?.length) return;
+  // 拖拽期间 syncDOM 不跑（防掉帧），链条原格仍带着米白格底，
+  // 这里按模型补 empty 类让腾出的格子真正"变空"，轨迹线才显形
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (state.board[r][c] === null && !els[r][c].classList.contains('empty'))
+        els[r][c].classList.add('empty');
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
       els[r][c].classList.remove('trace');
