@@ -324,14 +324,11 @@ function syncDOM() {
       const el = state.cellEls[r][c];
       const v = state.board[r][c];
       if (v === null) {
-        el.classList.add('empty');
-        // 清空内容以"渲染过"为判据（dataset.rendered 残留即清），
-        // 不能以 empty 类是否刚加为判据——拖拽轨迹会提前补 empty 类，
-        // 若据此跳过 innerHTML 清理，transform 归零后原格会露出棋子残影
-        if (el.dataset.rendered !== undefined) {
+        if (!el.classList.contains('empty')) {
+          el.classList.add('empty');
           el.innerHTML = '';
-          delete el.dataset.rendered;
         }
+        delete el.dataset.rendered;
       } else {
         if (el.classList.contains('empty')) el.classList.remove('empty');
         const iconName = ICON_NAMES[v];
@@ -718,12 +715,12 @@ function onPointerDown(e) {
 function updateDragTrace() {
   const els = state.cellEls;
   if (!els?.length) return;
-  // 拖拽期间 syncDOM 不跑（防掉帧），链条原格仍带着米白格底，
-  // 这里按模型补 empty 类让腾出的格子真正"变空"，轨迹线才显形
+  // 拖拽期间 syncDOM 不跑（防掉帧），链条原格仍带着米白格底。
+  // 用独立的 vacated 类做透明化（纯视觉），不碰 syncDOM 的状态类 empty
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
-      if (state.board[r][c] === null && !els[r][c].classList.contains('empty'))
-        els[r][c].classList.add('empty');
+      if (state.board[r][c] === null)
+        els[r][c].classList.add('vacated');
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
       els[r][c].classList.remove('trace');
@@ -746,7 +743,7 @@ function hideDragTrace() {
   if (!els?.length) return;
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
-      els[r]?.[c]?.classList.remove('trace');
+      els[r]?.[c]?.classList.remove('trace', 'vacated');
 }
 
 let dragFramePending = false;

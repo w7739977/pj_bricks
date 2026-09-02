@@ -224,6 +224,13 @@ body {
   box-shadow: none;
   cursor: default;
 }
+/* 拖拽轨迹专用：模型已空但 DOM 内容尚未清理的格子（链条原格）。
+   与 .empty 视觉一致但纯视觉语义，不参与 syncDOM 状态判断 */
+.cell.vacated {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
 .cell.empty:hover { transform: none; background: transparent; }
 .cell .veg {
   width: 88%;
