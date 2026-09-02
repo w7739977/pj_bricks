@@ -11,5 +11,7 @@
 - 项目自绘，随源码分发
 
 ## 历史
-- v20260827n 曾整站采用 OpenMoji（CC BY-SA 4.0），v20260827q 起改为
-  Fluent 形体 + 描边方案，OpenMoji 不再使用。
+- v20260827n-p 曾整站采用 OpenMoji（CC BY-SA 4.0），v20260827q-s 曾用 Fluent+描边
+  混合方案，v20260827t 起为纯 Fluent Emoji Flat 未修改形体，OpenMoji 不再使用。
+- v20260827n-p 曾整站采用 OpenMoji（CC BY-SA 4.0），v20260827q-s 曾用 Fluent+描边
+  混合方案，v20260827t 起为纯 Fluent Emoji Flat 未修改形体，OpenMoji 不再使用。
