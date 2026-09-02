@@ -1,7 +1,7 @@
 // 构建图标选图页 icon-picker.html（开发期工具，产物为纯静态页，由 server.js 直接伺服）
 // 用法：node tools/build-icon-picker.mjs
 // 数据源：OpenMoji（CC BY-SA 4.0）与 Twemoji（CC BY 4.0）官方/CDN SVG，构建期内联，运行时零外部请求
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { ICON_NAMES, ICON_LABELS } from '../game/svg-icons.js';
 
 // 蔬果 → Unicode emoji 码点
@@ -25,6 +25,28 @@ const sanitize = svg =>
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/\s(width|height)="[^"]*"/g, '');
 
+// Kenney Food Kit（CC0）：64×64 PNG 精灵，base64 内联。
+// 包内缺 potato / cucumber / peach，用最近似项占位并标注。
+const KENNEY_MAP = {
+  broccoli: 'broccoli', lettuce: 'cabbage', tomato: 'tomato', carrot: 'carrot', corn: 'corn',
+  eggplant: 'eggplant', onion: 'onion', potato: 'beet', cucumber: 'celery-stick', pepper: 'paprika',
+  pumpkin: 'pumpkin', grape: 'grapes', apple: 'apple', strawberry: 'strawberry',
+  banana: 'banana', orange: 'orange', pear: 'pear', cherry: 'cherries', peach: 'advocado',
+  watermelon: 'watermelon',
+};
+const KENNEY_MISSING = new Set(['potato', 'cucumber', 'peach']);
+const KENNEY_DIR = '/tmp/kenney_fk/Previews';
+const kenney = {};
+for (const name of ICON_NAMES) {
+  const f = `${KENNEY_DIR}/${KENNEY_MAP[name]}.png`;
+  try {
+    const b64 = readFileSync(f).toString('base64');
+    kenney[name] = `<img src="data:image/png;base64,${b64}" alt="${name}" style="width:56px;height:56px;image-rendering:auto">`;
+  } catch {
+    kenney[name] = `<span style="font-size:11px;opacity:.6">缺</span>`;
+  }
+}
+
 console.log('拉取 OpenMoji / Twemoji SVG…');
 const openmoji = {}, twemoji = {};
 for (const name of ICON_NAMES) {
@@ -47,6 +69,9 @@ const rows = ICON_NAMES.map(name => `
           </button>
           <button class="opt" data-src="twemoji" aria-pressed="false">
             <span class="cell-tile">${twemoji[name]}</span><span class="tag">Twemoji</span>
+          </button>
+          <button class="opt" data-src="kenney" aria-pressed="false">
+            <span class="cell-tile">${kenney[name]}${KENNEY_MISSING.has(name) ? '<small style="position:absolute;margin-top:-14px;margin-left:44px;background:#FF4F9A;color:#fff;border-radius:6px;padding:0 4px;font-size:10px">近似</small>' : ''}</span><span class="tag">Kenney</span>
           </button>
         </div>
       </section>`).join('\n');
@@ -77,6 +102,7 @@ const html = `<!DOCTYPE html>
   .row h2 small { font-weight: 400; opacity: .55; font-size: 12px; margin-left: 6px; }
   .opts { display: flex; gap: 10px; flex-wrap: wrap; }
   .opt {
+    position: relative;
     display: grid; justify-items: center; gap: 4px; padding: 8px;
     background: transparent; border: 3px solid transparent; border-radius: 12px;
     cursor: pointer; min-width: 96px; touch-action: manipulation;
@@ -108,7 +134,7 @@ const html = `<!DOCTYPE html>
 <body>
 <header>
   <h1>棋子图标候选对比</h1>
-  <p>每种蔬菜一行：现版自绘 / OpenMoji（CC BY-SA 4.0）/ Twemoji（CC BY 4.0）。
+  <p>每种蔬菜一行：现版自绘 / OpenMoji（CC BY-SA 4.0）/ Twemoji（CC BY 4.0）/ Kenney Food Kit（CC0，土豆/黄瓜/桃子为最近似占位）。
      点击卡片圈选；导出按钮会把选择结果复制到剪贴板，发给我即可替换进游戏。</p>
 </header>
 <main>
