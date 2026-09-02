@@ -47,6 +47,42 @@ for (const name of ICON_NAMES) {
   }
 }
 
+// Noto Emoji（Google, Apache-2.0/OFL）与 Fluent Emoji Flat（Microsoft, MIT）：
+// 经 Iconify API 拉取彩色/扁平 2D 矢量，构建期内联
+const NOTO_MAP = {
+  broccoli: ['broccoli'], lettuce: ['leafy-green'], tomato: ['tomato'], carrot: ['carrot'],
+  corn: ['ears-of-corn', 'ear-of-corn', 'corn'], eggplant: ['eggplant'], onion: ['onion'], potato: ['potato'],
+  cucumber: ['cucumber'], pepper: ['bell-pepper', 'bell', 'hot-pepper'],
+  pumpkin: ['jack-o-lantern', 'pumpkin'], grape: ['grapes'], apple: ['red-apple'],
+  strawberry: ['strawberry'], banana: ['banana'], orange: ['tangerine'], pear: ['pear'],
+  cherry: ['cherries'], peach: ['peach'], watermelon: ['watermelon'],
+};
+const FLAT_MAP = {
+  broccoli: ['broccoli'], lettuce: ['leafy-green'], tomato: ['tomato'], carrot: ['carrot'],
+  corn: ['ears-of-corn', 'ear-of-corn', 'corn'], eggplant: ['eggplant'], onion: ['onion'], potato: ['potato'],
+  cucumber: ['cucumber'], pepper: ['bell-pepper', 'bell-pepper-red', 'pepper'],
+  pumpkin: ['jack-o-lantern', 'pumpkin'], grape: ['grapes'], apple: ['red-apple'],
+  strawberry: ['strawberry'], banana: ['banana'], orange: ['tangerine'], pear: ['pear'],
+  cherry: ['cherries'], peach: ['peach'], watermelon: ['watermelon'],
+};
+async function iconify(prefix, names) {
+  for (const n of names) {
+    const res = await fetch(`https://api.iconify.design/${prefix}/${n}.svg`);
+    if (res.ok) {
+      const t = await res.text();
+      if (!t.includes('svg')) continue;
+      return sanitize(t).replace(/(width|height)="[^"]*"/g, '');
+    }
+  }
+  return null;
+}
+const noto = {}, flat = {};
+for (const name of ICON_NAMES) {
+  noto[name] = await iconify('noto', NOTO_MAP[name]);
+  flat[name] = await iconify('fluent-emoji-flat', FLAT_MAP[name]);
+  process.stdout.write(`  ${name} noto=${!!noto[name]} flat=${!!flat[name]}\n`);
+}
+
 console.log('拉取 OpenMoji / Twemoji SVG…');
 const openmoji = {}, twemoji = {};
 for (const name of ICON_NAMES) {
@@ -69,6 +105,12 @@ const rows = ICON_NAMES.map(name => `
           </button>
           <button class="opt" data-src="twemoji" aria-pressed="false">
             <span class="cell-tile">${twemoji[name]}</span><span class="tag">Twemoji</span>
+          </button>
+          <button class="opt" data-src="noto" aria-pressed="false">
+            <span class="cell-tile">${noto[name] ?? '<span style="font-size:11px;opacity:.6">缺</span>'}</span><span class="tag">Noto</span>
+          </button>
+          <button class="opt" data-src="fluent" aria-pressed="false">
+            <span class="cell-tile">${flat[name] ?? '<span style="font-size:11px;opacity:.6">缺</span>'}</span><span class="tag">Fluent</span>
           </button>
           <button class="opt" data-src="kenney" aria-pressed="false">
             <span class="cell-tile">${kenney[name]}${KENNEY_MISSING.has(name) ? '<small style="position:absolute;margin-top:-14px;margin-left:44px;background:#FF4F9A;color:#fff;border-radius:6px;padding:0 4px;font-size:10px">近似</small>' : ''}</span><span class="tag">Kenney</span>
@@ -134,7 +176,7 @@ const html = `<!DOCTYPE html>
 <body>
 <header>
   <h1>棋子图标候选对比</h1>
-  <p>每种蔬菜一行：现版自绘 / OpenMoji（CC BY-SA 4.0）/ Twemoji（CC BY 4.0）/ Kenney Food Kit（CC0，土豆/黄瓜/桃子为最近似占位）。
+  <p>每种蔬菜一行：现版自绘 / OpenMoji（CC BY-SA 4.0）/ Twemoji（CC BY 4.0）/ Noto 彩色（Apache-2.0）/ Fluent 扁平（MIT）/ Kenney Food Kit（CC0，土豆/黄瓜/桃子为最近似占位）。
      点击卡片圈选；导出按钮会把选择结果复制到剪贴板，发给我即可替换进游戏。</p>
 </header>
 <main>
