@@ -788,10 +788,11 @@ function handleDragMove(x, y) {
         state.drag.curR, state.drag.curC, state.drag.chain,
       );
       // 链条所有原始格标记 dragging：移动中的棋子 svg 依赖它显示
-      // 完整格底（vacated 只加给模型已空的格子，链条中段棋子的
-      // 原格模型仍记为被占，不能作为格底依据）
-      for (const p of state.drag.chainCells)
-        state.cellEls[p.r][p.c].classList.add('dragging');
+      // 完整格底；同时透明化原格（vacated）——中段棋子的原格模型
+      // 仍记为被占，若不主动透明化会残留空壳格底在棋盘上
+      for (const p of state.drag.chainCells) {
+        state.cellEls[p.r][p.c].classList.add('dragging', 'vacated');
+      }
       state.drag.appliedTotal = 0;
       // 整行/列无任何空格时链不可能平移，锁定视觉位移
       if (!hasLineEmptyCell(state.board, state.drag.curR, state.drag.curC, state.drag.axis)) {
