@@ -244,6 +244,15 @@ body {
      光栅化最大开销（实测拖垮帧率至 ~40FPS），贴纸感由粗描边+高光承担 */
 }
 
+/* 拖拽期间：被拖动链条的原格被 vacated 透明化，棋子 svg 单独移动，
+   需自带米白格底与描边，移动途中才不丢失格子的填充与边框 */
+.cell.vacated .veg {
+  background: var(--color-tile);
+  border: 2px solid #5C4A32;
+  border-radius: var(--radius-cell);
+  box-shadow: inset 0 -3px 0 var(--color-tile-shadow);
+}
+
 /* 表情层：默认隐藏，按 svg 上的 face-* 类点亮 */
 .cell .veg .face { display: none; }
 .cell .veg.face-shock .face--shock { display: inline; }
