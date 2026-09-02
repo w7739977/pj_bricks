@@ -702,17 +702,31 @@ function onPointerDown(e) {
     blockedHintAt: 0,
   };
   boardEl().setPointerCapture(e.pointerId);
-  showDragTrace(cell.r, cell.c);
+  updateDragTrace();
   updateLevelControls();
 }
 
-// ---- 拖拽轨迹线：抓取棋子时增强其所在行+列，辅助确认匹配轨迹 ----
-// 自适应对比由 CSS mix-blend-mode:difference 完成（浅底加深、深底提亮）
-function showDragTrace(r, c) {
+// ---- 拖拽轨迹线：跟随棋子移动，指示其当前可消除方向 ----
+// 轴锁定前：行+列均亮；水平拖动后只亮棋子所在列（竖直则亮所在行），
+// 且只增强空白格——已有棋子的格子不显示，轨迹干净可读。
+// 自适应对比由 CSS mix-blend-mode:difference 完成（浅底加深、深底提亮）。
+function updateDragTrace() {
   const els = state.cellEls;
   if (!els?.length) return;
-  for (let i = 0; i < COLS; i++) els[r]?.[i]?.classList.add('trace');
-  for (let i = 0; i < ROWS; i++) els[i]?.[c]?.classList.add('trace');
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      els[r][c].classList.remove('trace');
+  const d = state.drag;
+  if (!d || d.locked) return;
+  const line = !d.axis
+    ? null // 轴未定：行列均亮
+    : d.axis === 'row'
+      ? (r, c) => c === d.curC // 水平移动 → 跟随所在列
+      : (r, c) => r === d.curR; // 竖直移动 → 跟随所在行
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (state.board[r][c] === null && (!line || line(r, c)))
+        els[r][c].classList.add('trace');
 }
 
 function hideDragTrace() {
@@ -769,6 +783,7 @@ function handleDragMove(x, y) {
       if (!hasLineEmptyCell(state.board, state.drag.curR, state.drag.curC, state.drag.axis)) {
         state.drag.locked = true;
       }
+      updateDragTrace();
     } else return;
   }
 
@@ -799,6 +814,7 @@ function handleDragMove(x, y) {
     else state.drag.curR += result.applied;
     state.drag.moved = true;
     state.drag.appliedTotal += result.applied;
+    updateDragTrace(); // 轨迹线跟随棋子所在行/列移动
     // 拖拽期间不调用 syncDOM：内容固定在原始格，仅靠 transform 位移，
     // 避免跨格时重建 innerHTML 造成的掉帧；模型照常更新，落子时一次性同步
   }
