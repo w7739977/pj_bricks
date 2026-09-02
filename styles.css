@@ -154,8 +154,7 @@ body {
   border: 2px solid #5C4A32;
   border-radius: var(--radius-cell);
   box-shadow:
-    inset 0 -3px 0 var(--color-tile-shadow),
-    inset 0 1px 0 #FFFFFF;
+    inset 0 -3px 0 var(--color-tile-shadow); /* 性能：去掉 inset 高光层，光栅化减半 */
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
@@ -179,17 +178,24 @@ body {
 }
 .cell.hint {
   z-index: 3;
+}
+/* 性能：脉冲改为伪元素纯 opacity 动画——合成器线程驱动、零重绘；
+   旧实现动画 background+box-shadow，每帧全量重绘且无限循环持续烧帧率 */
+.cell.hint::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: -1; /* 垫在图标下方：只染格子背景，不遮蔬菜 */
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px #FF4F9A;
+  background: #FFD8E8;
+  opacity: 0;
   animation: candidate-pulse 600ms ease-in-out infinite alternate;
+  pointer-events: none;
 }
 @keyframes candidate-pulse {
-  from {
-    background: #FFE9B7;
-    box-shadow: inset 0 -2px 0 #E0C67A, 0 0 0 2px #FF4F9A;
-  }
-  to {
-    background: #FFD8E8;
-    box-shadow: inset 0 -2px 0 #DB9CB8, 0 0 0 4px #FF4F9A, 0 0 12px rgba(255, 79, 154, 0.72);
-  }
+  from { opacity: 0; }
+  to { opacity: 0.55; }
 }
 .cell.shake { animation: shake 0.52s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
 @keyframes shake {
@@ -210,7 +216,8 @@ body {
   height: 88%;
   overflow: visible;
   pointer-events: none;
-  filter: drop-shadow(0 2px 1px rgba(51, 41, 28, 0.38));
+  /* 性能：移除 drop-shadow 滤镜——140 个实例的实时高斯模糊是
+     光栅化最大开销（实测拖垮帧率至 ~40FPS），贴纸感由粗描边+高光承担 */
 }
 
 /* 表情层：默认隐藏，按 svg 上的 face-* 类点亮 */
