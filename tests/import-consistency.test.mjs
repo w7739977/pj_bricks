@@ -9,8 +9,8 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 // 用静态解析校验其从 board.js 导入的名字全部真实导出，
 // 防止"运行时 ReferenceError 但测试全绿"的盲区（真实事故：hasAnySolvablePairDeep 漏导入）
 test('interaction.js imports only names exported by board.js', () => {
-  const interaction = readFileSync(`${root}game/interaction.js`, 'utf8');
-  const board = readFileSync(`${root}game/board.js`, 'utf8');
+  const interaction = readFileSync(`${root}dist/game/interaction.js`, 'utf8');
+  const board = readFileSync(`${root}dist/game/board.js`, 'utf8');
 
   const importBlock = interaction.match(/import\s*\{([\s\S]*?)\}\s*from\s*'\.\/board\.js'/);
   assert.ok(importBlock, 'board.js import block found');

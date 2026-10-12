@@ -17,8 +17,8 @@ import {
   findSolvablePair,
   findSolvablePairDeep,
   reshuffleInPlace,
-} from '../game/board.js';
-import { createSeededRng } from '../game/levels.js';
+} from '../dist/game/board.js';
+import { createSeededRng } from '../dist/game/levels.js';
 
 function emptyBoard() {
   return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
@@ -304,4 +304,28 @@ test('pair not involving dragged chain does not count as reachable', () => {
   // 再放一颗与被拖链同排的同色，使链滑走时无自身配对：
   b[3][0] = 12; b[3][1] = 13; b[3][2] = 14; b[3][3] = 15; // 第 3 行段
   assert.equal(hasAnySolvablePairDeep(b), false);
+});
+
+test('progressive levels meet their opening budget and preserve balanced even counts across seeds', async () => {
+  const {getLevelConfig} = await import('../dist/game/levels.js');
+  const {countOpeningPairs} = await import('../dist/game/board.js');
+  for(let level=1;level<=20;level++) for(let seed=1;seed<=25;seed++) {
+    const config = getLevelConfig(level,{randomSeed:seed});
+    const result = createBoard({iconIndices:config.iconIndices,rng:createSeededRng(config.seed),openingPairs:config.openingPairs});
+    assert.equal(result.ok,true,`level ${level} seed ${seed}`);
+    const pairs = countOpeningPairs(result.board);
+    assert.ok(pairs>=config.openingPairs.min && pairs<=config.openingPairs.max);
+    assert.equal(hasAnySolvablePair(result.board),true);
+    const counts = new Map();
+    result.board.flat().forEach(v=>counts.set(v,(counts.get(v)||0)+1));
+    assert.equal(counts.size,config.iconCount);
+    assert.ok([...counts.values()].every(n=>n%2===0));
+    assert.ok(Math.max(...counts.values())-Math.min(...counts.values())<=2);
+  }
+});
+
+test('difficulty tuning remains deterministic on restart and rejects zero-opening budgets', async () => {
+  const options = {iconIndices:Array.from({length:20},(_,i)=>i),openingPairs:{min:1,max:1}};
+  assert.deepEqual(createBoard({...options,rng:createSeededRng(9123)}),createBoard({...options,rng:createSeededRng(9123)}));
+  assert.throws(()=>createBoard({...options,openingPairs:{min:0,max:0}}),RangeError);
 });

@@ -1,0 +1,4 @@
+Noto Emoji artwork: Copyright Google LLC. Licensed under the Apache License, Version 2.0.
+Source: https://github.com/googlefonts/noto-emoji
+The SVG artwork was adapted with ink silhouettes and identifier scoping. The pumpkin was adapted to remove its Halloween face.
+The original game's Fluent Emoji Flat artwork remains in its unused source module: Copyright Microsoft Corporation, MIT license.

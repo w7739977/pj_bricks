@@ -9,8 +9,9 @@ import { createBrowserDialogManager } from './dialogs.js';
 import { createLevelSession } from './level-session.js';
 import { createRandomSeed, createSeededRng, getLevelConfig } from './levels.js';
 import { createDefaultProgress, loadProgress, saveProgress } from './progress.js';
+import { playMatchFeedback } from './burst-effects.js';
 import { createMoveAnimator } from './move-animation.js';
-import { advanceDragShift, createDragInputLock } from './drag-input.js';
+import { advanceDragShift, constrainDragOffset, createDragFrameQueue, createDragInputLock } from './drag-input.js';
 
 // ---- 内部状态（模块私有）----
 const state = {
@@ -21,6 +22,7 @@ const state = {
   anchor: null,           // { r, c, el }
   candidates: [],         // [{ r, c, el }]
   pendingRevert: null,    // 多目标 waiting 期间保留的回滚快照 { snapshot, revertMoves }
+  cellSize: 35,
   pitch: 35,              // 当前单元格中心距，由 measurePitch() 维护
   currentLevel: 1,
   highestUnlocked: 1,
@@ -36,6 +38,7 @@ const state = {
   reshuffleNonce: 0,
   storage: null,
   drag: null,
+  effectCleanup: null,
 };
 
 const DRAG_THRESHOLD = 10;
@@ -94,6 +97,9 @@ function clearHintHighlight() {
 }
 
 function clearLevelAsync() {
+  state.effectCleanup?.();
+  state.effectCleanup = null;
+  dragFrames.cancel();
   const pointerId = state.drag?.pointerId;
   if (pointerId !== undefined && boardEl().hasPointerCapture?.(pointerId)) {
     boardEl().releasePointerCapture(pointerId);
@@ -120,7 +126,8 @@ function measurePitch() {
   if (cells.length < 2) return state.pitch;
   const a = cells[0].getBoundingClientRect();
   const b = cells[1].getBoundingClientRect();
-  if (Math.abs(a.top - b.top) < 2) {
+  state.cellSize = a.width;
+  if (b.left > a.left) {
     // 保留分数像素精度：CSS 格距在部分视口下非整数，取整会引入每格累积偏差
     state.pitch = b.left - a.left;
   } else {
@@ -225,6 +232,7 @@ function loadLevel(levelNumber, seed, { allowReplacement = true } = {}) {
   state.levelConfig = config;
   const result = createBoard({
     iconIndices: config.iconIndices,
+    openingPairs: config.openingPairs,
     rng: createSeededRng(config.seed),
   });
   if (!result.ok) {
@@ -249,6 +257,7 @@ async function handleBoardGenerationFailure(sessionId, config, allowReplacement)
     });
     const replacement = createBoard({
       iconIndices: replacementConfig.iconIndices,
+      openingPairs: replacementConfig.openingPairs,
       rng: createSeededRng(replacementSeed),
     });
     if (replacement.ok) {
@@ -283,6 +292,22 @@ function retryCurrentLevel() {
   loadLevel(state.currentLevel, state.levelSeed);
 }
 
+// The full tile surface moves; SVG size is identical in every interaction state.
+function tileMarkup(iconName) {
+  return `<span class="tile-piece">${ICONS[iconName]}</span>`;
+}
+
+function updateBoardProgress() {
+  const cleared = state.board.flat().filter(value => value === null).length;
+  const percent = Math.round(cleared / (ROWS * COLS) * 100);
+  const bar = document.getElementById('progressFill');
+  const label = document.getElementById('progressValue');
+  if (bar) bar.style.width = `${percent}%`;
+  if (label) label.textContent = `${percent}%`;
+  const track = document.getElementById('progressTrack');
+  if (track) track.setAttribute('aria-valuenow', String(percent));
+}
+
 // ---- 渲染 ----
 function renderBoard() {
   clearHintHighlight();
@@ -305,7 +330,7 @@ function renderBoard() {
         cell.classList.add('empty');
       } else {
         const iconName = ICON_NAMES[v];
-        cell.innerHTML = ICONS[iconName];
+        cell.innerHTML = tileMarkup(iconName);
         cell.dataset.rendered = iconName;
       }
       el.appendChild(cell);
@@ -314,6 +339,7 @@ function renderBoard() {
     state.cellEls.push(rowArr);
   }
   cancelSelection();
+  updateBoardProgress();
   requestAnimationFrame(measurePitch);
 }
 
@@ -333,7 +359,7 @@ function syncDOM() {
         if (el.classList.contains('empty')) el.classList.remove('empty');
         const iconName = ICON_NAMES[v];
         if (el.dataset.rendered !== iconName) {
-          el.innerHTML = ICONS[iconName];
+          el.innerHTML = tileMarkup(iconName);
           el.dataset.rendered = iconName;
         }
       }
@@ -369,14 +395,7 @@ function selectAndEvaluate(r, c) {
     el.classList.add('selected');
     state.anchor = { r, c, el };
     state.mode = 'selected';
-    setBusy(true);
-    scheduleForSession(() => {
-      const remainsSelected = state.anchor && state.anchor.r === r && state.anchor.c === c;
-      setBusy(false);
-      if (remainsSelected) {
-        eliminate({ r, c, el }, { r: t.r, c: t.c, el: state.cellEls[t.r][t.c] });
-      }
-    }, 220);
+    eliminate({ r, c, el }, { r: t.r, c: t.c, el: state.cellEls[t.r][t.c] });
   } else if (targets.length >= 2) {
     state.mode = 'waiting';
     state.anchor = { r, c, el };
@@ -408,33 +427,36 @@ function eliminate(a, b) {
   state.board[a.r][a.c] = null;
   state.board[b.r][b.c] = null;
   setBusy(true);
-  // 表情阶段：只点亮预置表情层，不重建 SVG（旧实现 outerHTML 序列化+重解析）
-  [a, b].forEach(p => {
-    const svg = p.el.querySelector('svg.veg');
-    if (svg) svg.classList.add('face-shock');
-  });
+  cancelSelection();
   const cells = [a, b];
+  const sessionId = state.levelSessionId;
+  cells.forEach(p => {
+    const svg = p.el.querySelector('svg.veg');
+    if (svg) svg.classList.add('face-happy');
+  });
   const finishEliminate = () => {
+    if (!sessionStillCurrent(sessionId)) return;
+    state.effectCleanup = null;
     cells.forEach(p => {
-      p.el.classList.remove('selected', 'hint', 'pop');
+      p.el.classList.remove('selected', 'hint', 'matched', 'pop');
+      p.el.style.removeProperty('--pop-duration');
       p.el.classList.add('empty');
       p.el.innerHTML = '';
       delete p.el.dataset.rendered;
     });
+    updateBoardProgress();
     setBusy(false);
     afterEliminate();
   };
-  scheduleForSession(() => {
-    const popDuration = motionDuration(80);
-    if (popDuration === 0) {
-      finishEliminate();
-      return;
-    }
-    // 消失阶段：缩小淡出动画，动画结束后再清理 DOM
-    cells.forEach(p => p.el.classList.add('pop'));
-    scheduleForSession(finishEliminate, popDuration);
-  }, motionDuration(110));
-  cancelSelection();
+  const duration = motionDuration(440);
+  const cleanup = playMatchFeedback({
+    cells: cells.map(p => p.el), duration,
+    // Use measured tile size; grid gaps can change with the phone layout.
+    size: state.cellSize,
+    schedule: scheduleForSession,
+    onFinish: finishEliminate,
+  });
+  if (duration > 0) state.effectCleanup = cleanup;
 }
 
 function cancelSelection() {
@@ -682,6 +704,8 @@ function onPointerDown(e) {
       return;
     }
   }
+  dragFrames.cancel();
+  measurePitch();
   const { x, y } = pointerXY(e);
   state.drag = {
     pointerId: e.pointerId,
@@ -746,22 +770,16 @@ function hideDragTrace() {
       els[r]?.[c]?.classList.remove('trace', 'vacated', 'dragging');
 }
 
-let dragFramePending = false;
-let dragLatestXY = null;
+const dragFrames = createDragFrameQueue({
+  requestFrame: callback => requestAnimationFrame(callback),
+  cancelFrame: id => cancelAnimationFrame(id),
+  onMove: (x, y) => { if (state.drag) handleDragMove(x, y); },
+});
 
 function onPointerMove(e) {
   if (!state.drag || !dragInput.owns(e.pointerId)) return;
   if (e.cancelable) e.preventDefault();
-  const { x, y } = pointerXY(e);
-  // 仅记录最新坐标，实际处理合并到每帧一次，避免高刷指针事件重复触发全量工作
-  dragLatestXY = { x, y };
-  if (dragFramePending) return;
-  dragFramePending = true;
-  requestAnimationFrame(() => {
-    dragFramePending = false;
-    if (!state.drag || !dragLatestXY) return;
-    handleDragMove(dragLatestXY.x, dragLatestXY.y);
-  });
+  dragFrames.push(e.clientX, e.clientY);
 }
 
 function handleDragMove(x, y) {
@@ -802,7 +820,12 @@ function handleDragMove(x, y) {
     } else return;
   }
 
-  const distance = state.drag.axis === 'row' ? dx : dy;
+  const distance = constrainDragOffset({
+    positions: state.drag.chainCells, axis: state.drag.axis,
+    distance: state.drag.axis === 'row' ? dx : dy,
+    pitch: state.pitch, rows: ROWS, cols: COLS,
+    board: state.drag.snapshot,
+  });
   if (state.drag.locked) {
     state.drag.visualOffset = { x: 0, y: 0 };
     return;
@@ -855,7 +878,9 @@ function handleDragMove(x, y) {
 }
 
 function onPointerUp(e) {
-  if (!state.drag || !dragInput.release(e.pointerId)) return;
+  if (!state.drag || !dragInput.owns(e.pointerId)) return;
+  dragFrames.flush(e.clientX, e.clientY);
+  dragInput.release(e.pointerId);
   const wasDrag = state.drag.dragged;
   const info = {
     r: state.drag.r, c: state.drag.c,
@@ -867,6 +892,7 @@ function onPointerUp(e) {
     visualOffset: state.drag.visualOffset,
   };
   state.drag = null;
+  if (boardEl().hasPointerCapture?.(e.pointerId)) boardEl().releasePointerCapture(e.pointerId);
   hideDragTrace();
   updateLevelControls();
 
@@ -877,7 +903,11 @@ function onPointerUp(e) {
 
   const snapDuration = motionDuration(SNAP_DURATION);
   if (!info.moved) {
-    moveAnimator.settleFollow(snapDuration);
+    if (snapDuration > 0) setBusy(true);
+    const sessionId = state.levelSessionId;
+    moveAnimator.settleFollow(snapDuration, () => {
+      if (sessionStillCurrent(sessionId)) setBusy(false);
+    });
     return;
   }
 
@@ -939,8 +969,10 @@ function onPointerUp(e) {
 
 function onPointerCancel(e) {
   if (!state.drag || !dragInput.release(e.pointerId)) return;
+  dragFrames.cancel();
   const info = state.drag;
   state.drag = null;
+  if (boardEl().hasPointerCapture?.(e.pointerId)) boardEl().releasePointerCapture(e.pointerId);
   hideDragTrace();
   updateLevelControls();
   if (!info.dragged) return;
@@ -985,6 +1017,7 @@ export function initGame() {
   window.addEventListener('pointermove', onPointerMove, { passive: false });
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerCancel);
+  be.addEventListener('lostpointercapture', onPointerCancel);
 
   suppressBrowserGestures(be);
 }

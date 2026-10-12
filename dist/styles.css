@@ -1,0 +1,740 @@
+/* ===== 田园街机手绘设计令牌 ===== */
+:root {
+  --color-primary: #E94D85;
+  --color-on-primary: #FFFFFF;
+  --color-secondary: #2E87C8;
+  --color-accent: #F5B700;
+  --color-bg: #48B979;
+  --color-fg: #33291C;
+  --color-muted: #FFF4B8;
+  --color-border: #66742E;
+  --color-destructive: #C83A32;
+  --color-ring: #FF4F9A;
+
+  --color-sky: #CDEFFC;
+  --color-grass: #48B979;
+  --color-grass-dark: #2E955E;
+  --color-tile: #FFF8C9;
+  --color-tile-shadow: #E7D98D;
+  --color-grid: #66742E;
+  --color-wood: #B87838;
+  --color-wood-light: #D59A50;
+  --color-wood-dark: #55351F;
+  --color-ink: #33291C;
+
+  --radius-board: 14px;
+  --radius-cell: 5px 7px 4px 6px;
+  --radius-button: 10px 13px 9px 11px;
+
+  --pitch: clamp(20px, calc((100vw - 58px) / 10), 42px);
+  --font-title: 'ZCOOL KuaiLe', 'Noto Sans SC', sans-serif;
+  --font-body: 'Baloo 2', 'Noto Sans SC', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  /* 页面级：消灭双击缩放判定，同时不阻碍滚动 */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+body {
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  background-color: var(--color-grass);
+  background-image: radial-gradient(rgba(24, 113, 69, 0.15) 1px, transparent 1px);
+  background-size: 18px 18px;
+  color: var(--color-fg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 8px 14px;
+  gap: 7px;
+  overflow-x: hidden;
+}
+
+/* ===== 顶部田园横幅 ===== */
+.game-header {
+  width: min(100%, 540px);
+  background: #FFFDF0;
+  border: 3px solid var(--color-ink);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 0 var(--color-wood-dark);
+}
+.topbar {
+  height: 46px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 12px 2px;
+  background: #FFFDF0;
+  border-bottom: 2px solid var(--color-ink);
+}
+.title {
+  font-family: var(--font-title);
+  font-size: clamp(23px, 6vw, 32px);
+  color: #E94D45;
+  -webkit-text-stroke: 1px var(--color-ink);
+  paint-order: stroke fill;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+.meta {
+  min-width: 72px;
+  padding: 4px 10px 3px;
+  border: 2px solid var(--color-ink);
+  border-radius: 7px 10px 6px 9px;
+  background: var(--color-muted);
+  box-shadow: 2px 3px 0 var(--color-wood-dark);
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+}
+.meta #level { font-variant-numeric: tabular-nums; }
+.farm-banner {
+  height: clamp(64px, 17vw, 92px);
+  background: var(--color-sky);
+  overflow: hidden;
+}
+.farm-banner svg { display: block; width: 100%; height: 100%; }
+
+/* ===== 提示文字 ===== */
+.tip {
+  min-height: 23px;
+  max-width: 520px;
+  padding: 2px 10px 0;
+  font-size: 14px;
+  color: #7A201F;
+  font-weight: 800;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.55);
+}
+
+/* ===== 木框棋盘 ===== */
+.board-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 2px 0 6px;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(10, var(--pitch));
+  grid-template-rows: repeat(14, var(--pitch));
+  gap: 2px;
+  padding: 8px;
+  position: relative;
+  background: var(--color-grid);
+  border: 5px solid var(--color-wood-light);
+  border-radius: var(--radius-board);
+  outline: 3px solid var(--color-wood-dark);
+  user-select: none;
+  -webkit-user-select: none;
+  /* 棋盘整体（含网格缝隙）禁止一切浏览器手势：双击缩放、捏合缩放、长按菜单 */
+  touch-action: none;
+  box-shadow:
+    0 7px 0 var(--color-wood-dark),
+    0 11px 16px rgba(47, 66, 31, 0.35),
+    inset 0 0 0 2px #E8B96F;
+}
+.cell {
+  width: var(--pitch);
+  height: var(--pitch);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: var(--color-tile);
+  border: 2px solid #5C4A32;
+  border-radius: var(--radius-cell);
+  box-shadow:
+    inset 0 -3px 0 var(--color-tile-shadow); /* 性能：去掉 inset 高光层，光栅化减半 */
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  transition: transform 160ms ease-out, background-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+.cell:hover {
+  background: #FFFDE1;
+  transform: translateY(-1px);
+  z-index: 2;
+}
+.cell:active { cursor: grabbing; }
+.cell.selected {
+  background: #FFF1A6;
+  box-shadow:
+    inset 0 -2px 0 #DFAE35,
+    0 0 0 3px var(--color-accent),
+    0 3px 0 rgba(85, 53, 31, 0.35);
+  transform: translateY(-1px);
+  z-index: 4;
+}
+.cell.hint {
+  z-index: 3;
+}
+/* 性能：脉冲改为伪元素纯 opacity 动画——合成器线程驱动、零重绘；
+   旧实现动画 background+box-shadow，每帧全量重绘且无限循环持续烧帧率 */
+.cell.hint::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: -1; /* 垫在图标下方：只染格子背景，不遮蔬菜 */
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px #FF4F9A;
+  background: #FFD8E8;
+  opacity: 0;
+  animation: candidate-pulse 600ms ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes candidate-pulse {
+  from { opacity: 0; }
+  to { opacity: 0.55; }
+}
+
+/* 拖拽轨迹线：抓取棋子时其所在行+列整线增强。
+   白色叠层 + difference 混合 = 自适应对比：浅色格自动加深、
+   深色背景自动提亮，无需 JS 判断亮度；静态层，不触发动画重绘 */
+.cell.trace::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2; /* 盖过贴图但不挡指针 */
+  background: #fff;
+  mix-blend-mode: difference;
+  opacity: 0.38;
+  pointer-events: none;
+}
+.cell.shake { animation: shake 0.52s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px) rotate(-2deg); }
+  20%, 80% { transform: translateX(3px) rotate(3deg); }
+  30%, 50%, 70% { transform: translateX(-5px) rotate(-4deg); }
+  40%, 60% { transform: translateX(5px) rotate(4deg); }
+}
+.cell.empty {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  cursor: default;
+}
+/* 拖拽轨迹专用：模型已空但 DOM 内容尚未清理的格子（链条原格）。
+   与 .empty 视觉一致但纯视觉语义，不参与 syncDOM 状态判断 */
+.cell.vacated {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.cell.empty:hover { transform: none; background: transparent; }
+.cell .veg {
+  width: 88%;
+  height: 88%;
+  overflow: visible;
+  pointer-events: none;
+  /* 拖拽期间 zIndex:10 施加在 svg 上（见 move-animation.js follow），
+     svg 需定位后才参与 z-index 排序，才能浮在亮线与其它格子之上 */
+  position: relative;
+  /* 性能：移除 drop-shadow 滤镜——140 个实例的实时高斯模糊是
+     光栅化最大开销（实测拖垮帧率至 ~40FPS），贴纸感由粗描边+高光承担 */
+}
+
+/* 表情层：默认隐藏，按 svg 上的 face-* 类点亮 */
+.cell .veg .face { display: none; }
+.cell .veg.face-shock .face--shock { display: inline; }
+.cell .veg.face-happy .face--happy { display: inline; }
+
+/* ===== 街机工具按钮 ===== */
+.controls {
+  width: min(100%, 430px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 3px;
+}
+.tool {
+  min-height: 50px;
+  position: relative;
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 3px solid var(--color-ink);
+  border-radius: var(--radius-button);
+  background: #FFF4B8;
+  box-shadow: 0 5px 0 var(--color-wood-dark);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 100ms ease-out, box-shadow 100ms ease-out, filter 100ms ease-out;
+}
+.tool svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+.tool:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.tool:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--color-wood-dark); }
+.tool:focus-visible,
+.dialog__close:focus-visible {
+  outline: 4px solid #FFFFFF;
+  box-shadow: 0 0 0 7px var(--color-ring), 0 5px 0 var(--color-wood-dark);
+}
+.tool--hint { background: #FFD34E; }
+.tool--shuffle { background: #52B7E8; }
+.tool--restart { background: #F08A55; }
+.tool--primary { background: #69C978; }
+.tool--secondary { background: #FFF4B8; }
+.tool__badge {
+  position: absolute;
+  top: -9px;
+  right: -7px;
+  min-width: 24px;
+  height: 24px;
+  padding-inline: 5px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  background: #E94D45;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.tool:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.45);
+  opacity: 0.7;
+  transform: none;
+}
+.tool:disabled:hover { filter: saturate(0.45); transform: none; }
+.tool:disabled:active { box-shadow: 0 5px 0 var(--color-wood-dark); }
+
+/* ===== 木框纸张弹框 ===== */
+.dialog {
+  padding: 0;
+  border: none;
+  background: transparent;
+  max-width: 92vw;
+}
+.dialog::backdrop { background: rgba(36, 45, 28, 0.62); }
+.dialog[open] { animation: dialog-in 180ms ease-out; }
+@keyframes dialog-in {
+  from { transform: translateY(8px) scale(0.94); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+.dialog__card {
+  position: relative;
+  min-width: min(300px, 88vw);
+  padding: 30px 28px 24px;
+  background: #FFF9D5;
+  border: 4px solid var(--color-wood-light);
+  border-radius: 14px 18px 12px 16px;
+  outline: 3px solid var(--color-wood-dark);
+  box-shadow: 0 8px 0 var(--color-wood-dark), 0 18px 36px rgba(37, 43, 27, 0.35);
+  text-align: center;
+}
+.dialog__title {
+  margin-bottom: 8px;
+  color: #B34237;
+  font-family: var(--font-title);
+  font-size: 27px;
+  letter-spacing: 1px;
+}
+.dialog__desc { margin-bottom: 20px; color: #5D4A30; font-size: 15px; line-height: 1.55; }
+.dialog__summary {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 18px;
+  color: #5D4A30;
+  font-weight: 800;
+}
+.dialog__unlock {
+  margin-bottom: 10px;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: #5D4A30;
+  font-weight: 800;
+}
+.dialog__unlock .veg { width: 58px; height: 58px; }
+.dialog__actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.dialog__actions .tool { min-width: 112px; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.dialog__close {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--color-ink);
+  border-radius: 8px 11px 7px 10px;
+  background: #FFFFFF;
+  color: var(--color-ink);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.dialog__close:hover { background: #FFD8E8; }
+
+/* ===== 响应式 ===== */
+@media (min-width: 768px) {
+  :root { --pitch: 46px; }
+  body { gap: 9px; }
+  .farm-banner { height: 92px; }
+  .board { padding: 10px; }
+}
+@media (max-width: 360px) {
+  body { padding-inline: 5px; }
+  .tool { padding-inline: 7px; gap: 4px; font-size: 14px; }
+  .tool svg { width: 20px; height: 20px; }
+}
+@media (orientation: landscape) and (max-height: 620px) {
+  .farm-banner { display: none; }
+  .game-header { border-radius: 0 0 9px 9px; }
+  .topbar { height: 42px; }
+}
+
+/* ===== 动效降级 ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .cell:hover,
+  .tool:hover { transform: none; }
+}
+
+/* Keep hover/selection transforms from moving the coordinate reference while dragging. */
+.cell.dragging { transform: none; z-index: 10; }
+
+/* Calm orchard palette: the board stays the focus. */
+:root {
+  --color-grass: #E7F1DC;
+  --color-fg: #304E3B;
+  --color-ink: #3D5A45;
+  --color-grid: #AAC59B;
+  --color-tile: #FFFDF1;
+  --color-tile-shadow: #E4E6CB;
+  --color-wood-light: #D4BB86;
+  --color-wood-dark: #627958;
+  --radius-cell: 7px;
+  --radius-button: 12px;
+  --radius-board: 18px;
+}
+body {
+  background-image: radial-gradient(ellipse at 50% 0%, #F8FAEE 0%, transparent 65%);
+  background-size: 100% 100%;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  gap: 10px;
+}
+.game-header {
+  border: 1px solid #C6D8BC;
+  border-top: 0;
+  border-radius: 0 0 18px 18px;
+  box-shadow: 0 3px 12px #4965440D;
+}
+.topbar { border-bottom: 0; height: 52px; padding-inline: 16px; }
+.title { color: #385F42; -webkit-text-stroke: 0; letter-spacing: 1px; font-size: clamp(23px, 6vw, 29px); }
+.meta { border: 1px solid #BDD1A9; border-radius: 999px; background: #EDF4E3; box-shadow: none; color: #50713D; }
+.farm-banner { height: clamp(46px, 13vw, 68px); opacity: .92; }
+.tip { color: #557349; font-size: 13px; font-weight: 600; text-shadow: none; }
+.board {
+  outline: 1px solid #8DAB78;
+  box-shadow: 0 5px 0 #91AA7C, 0 12px 24px #54714324, inset 0 0 0 2px #EFE3C5;
+  background-image: radial-gradient(#90AF7C60 .6px, transparent .6px);
+  background-size: 8px 8px;
+  isolation: isolate;
+}
+/* Stationary cells only define grid geometry; all visible tile surfaces move together. */
+.cell, .cell:hover, .cell.selected, .cell.empty, .cell.vacated {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.tile-piece {
+  position: absolute;
+  inset: -2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-tile);
+  border: 1.5px solid #8DA47B;
+  border-radius: var(--radius-cell);
+  box-shadow: inset 0 -2px 0 var(--color-tile-shadow), 0 1px 1px #52714312;
+  pointer-events: none;
+  transform-origin: center;
+}
+.cell .veg { width: 88%; height: 88%; flex: none; }
+.cell:hover .tile-piece { background: #FFFFFF; }
+.cell.selected .tile-piece {
+  background: #FFF2BA;
+  border-color: #CAA94D;
+  box-shadow: inset 0 -2px 0 #EADC9C, 0 0 0 2px #E5C968;
+}
+.cell.hint .tile-piece { border-color: #C383A5; background: #FFF1F5; }
+.cell.dragging { z-index: 10; }
+.cell.dragging .tile-piece { box-shadow: inset 0 -2px 0 var(--color-tile-shadow), 0 4px 8px #36543C2E; }
+.cell.trace::before {
+  mix-blend-mode: normal;
+  background: #E4F1CE;
+  opacity: .62;
+  border: 1px solid #F4FFD9;
+  border-radius: 6px;
+  z-index: 0;
+}
+.cell.matched { z-index: 12; }
+.cell.matched .tile-piece {
+  background: #FFF5CC;
+  border-color: #DBB74C;
+  box-shadow: 0 0 0 2px #E8CC73, 0 0 16px #E9D07080;
+}
+/* Independent scale leaves the drag translation untouched while it settles. */
+.cell.pop .tile-piece {
+  animation: tile-disappear var(--pop-duration, 320ms) cubic-bezier(.22,.61,.36,1) both;
+  will-change: opacity, scale;
+}
+.cell.pop::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid #D5B663;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: match-ring var(--pop-duration, 320ms) ease-out both;
+}
+@keyframes tile-disappear {
+  0% { scale: 1; opacity: 1; }
+  25% { scale: 1.10; opacity: 1; }
+  60% { scale: .94; opacity: .7; }
+  100% { scale: .55; opacity: 0; }
+}
+@keyframes match-ring {
+  0% { transform: scale(.6); opacity: .65; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+.controls { gap: 12px; padding-top: 4px; }
+.tool { border: 1.5px solid #829975; box-shadow: 0 3px 0 #91AA7C; border-radius: 12px; font-size: 14px; min-height: 46px; }
+.tool--hint { background: #F3E4AA; }
+.tool--shuffle { background: #D2E7DF; }
+.tool--restart { background: #F0D4BE; }
+.tool__badge { background: #738B5D; border: 2px solid #F6F8EE; top: -8px; right: -5px; }
+.tool:disabled { opacity: .5; }
+.tool:disabled:active { box-shadow: 0 3px 0 #91AA7C; }
+@media (prefers-reduced-motion: reduce) {
+  .cell.pop .tile-piece, .cell.pop::after { animation: none; }
+}
+
+/* Burst has its own layer; tile movement/settling cannot overwrite its transforms. */
+.match-burst { position: absolute; inset: -2px; pointer-events: none; z-index: 30; }
+.burst-shard { position: absolute; inset: 0; animation: burst-shard var(--burst-duration) cubic-bezier(.15,.7,.2,1) both; }
+.burst-shard--0 { clip-path: polygon(0 0,50% 0,50% 50%,0 50%); }
+.burst-shard--1 { clip-path: polygon(50% 0,100% 0,100% 50%,50% 50%); }
+.burst-shard--2 { clip-path: polygon(0 50%,50% 50%,50% 100%,0 100%); }
+.burst-shard--3 { clip-path: polygon(50% 50%,100% 50%,100% 100%,50% 100%); }
+.burst-fragment { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border: 1.5px solid #DBB74C; border-radius: var(--radius-cell); background: #FFF5CC; }
+.burst-spark { position: absolute; left: calc(50% - 3px); top: calc(50% - 3px); width: 6px; height: 6px; background: #EAB64E; border-radius: 2px; animation: burst-spark var(--burst-duration) ease-out both; }
+.burst-spark--1 { background: #85B65D; border-radius: 50%; }
+.burst-spark--2 { background: #E591A9; clip-path: polygon(50% 0,65% 35%,100% 50%,65% 65%,50% 100%,35% 65%,0 50%,35% 35%); width: 9px; height: 9px; }
+.cell.pop .tile-piece { animation-name: tile-explode; }
+.cell.pop::after { border-width: 3px; animation-name: explosion-ring; }
+@keyframes tile-explode {
+  0% { scale: 1; opacity: 1; }
+  14% { scale: 1.12; opacity: 1; }
+  22%,100% { scale: 1.12; opacity: 0; }
+}
+@keyframes burst-shard {
+  0%,14% { transform: translate(0,0) rotate(0); opacity: 0; }
+  15% { transform: translate(0,0) rotate(0); opacity: 1; }
+  65% { opacity: .8; }
+  100% { transform: translate(var(--tx),var(--ty)) rotate(var(--spin)) scale(.4); opacity: 0; }
+}
+@keyframes burst-spark {
+  0%,14% { transform: translate(0,0) scale(.4); opacity: 0; }
+  18% { opacity: 1; }
+  60% { opacity: .9; }
+  100% { transform: translate(var(--tx),var(--ty)) rotate(var(--spin)) scale(.1); opacity: 0; }
+}
+@keyframes explosion-ring {
+  0%,14% { transform: scale(.6); opacity: 0; }
+  18% { opacity: .85; }
+  100% { transform: scale(2); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .match-burst { display: none; } }
+
+/* Keep the fade/scale on compositor properties; feedback starts without a timer gap. */
+.burst-shard, .burst-spark { will-change: transform, opacity; }
+
+/* Universal margin reset otherwise disables native dialog centering. */
+.dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: fit-content;
+  height: fit-content;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 48px);
+  overflow: visible;
+}
+.dialog__card {
+  min-width: min(320px, calc(100vw - 40px));
+  max-height: calc(100dvh - 56px);
+  overflow-y: auto;
+}
+
+/* Phone-first farm arcade: narrow frame, full-width 10x14 touch board. */
+:root {
+  --pitch: min(48px, calc((100vw - 22px) / 10));
+  --color-grass: #45BD83;
+  --color-tile: #FFFED7;
+  --color-tile-shadow: #E1EAB2;
+  --color-ink: #354522;
+  --color-grid: #56752D;
+  --radius-cell: 4px;
+  --font-title: ui-rounded, 'PingFang SC', system-ui, sans-serif;
+  --font-body: 'PingFang SC', system-ui, sans-serif;
+}
+body {
+  min-height: 100svh;
+  padding: max(8px, env(safe-area-inset-top)) 4px max(14px, env(safe-area-inset-bottom));
+  gap: 8px;
+  background: #45BD83;
+}
+.game-header { width: min(100%, 500px); background: transparent; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.topbar { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; height: 48px; padding: 0 8px; background: transparent; }
+.title { font-size: 22px; color: #FFFDE5; font-weight: 850; text-align: center; letter-spacing: 1px; text-shadow: 0 2px 0 #278152; }
+.meta { background: #288A5D; color: #FFFFFF; border: 1px solid #23764E; font-size: 13px; min-width: 64px; }
+.tool--compact { min-height: 38px; width: 38px; padding: 0; background: #FFF9CE; border: 2px solid #354522; border-radius: 9px; box-shadow: 0 3px 0 #247847; }
+.tool--compact svg { width: 23px; height: 23px; }
+.progress-hud { display: flex; align-items: center; width: min(74%, 320px); margin: 12px auto 2px; gap: 6px; height: 30px; }
+.progress-value { color: #FFFEDE; font-size: 12px; font-weight: 800; min-width: 30px; text-align: right; }
+.progress-track { position: relative; height: 8px; flex: 1; background: #2A7548; border: 2px solid #315323; border-radius: 10px; }
+.progress-fill { display: block; height: 100%; width: 0%; background: #FFE03D; border-radius: inherit; transition: width 220ms ease-out; }
+.progress-gift { width: 31px; height: 31px; margin-left: -7px; flex: none; }
+.tip { min-height: 18px; font-size: 12px; padding: 0 6px; color: #153E2A; line-height: 18px; }
+.board-wrap { flex: 1; align-items: center; padding: 2px 0 8px; }
+.board {
+  gap: 0;
+  padding: 3px;
+  border: 4px solid #C6943E;
+  border-radius: 11px;
+  outline: 1.5px solid #5E4A22;
+  background: #547530;
+  box-shadow: 0 5px 0 #876728, 0 8px 0 #278152;
+}
+.tile-piece {
+  border: 1.25px solid #52612D;
+  border-radius: 4px;
+  background: #FFFED7;
+  box-shadow: inset 0 -1.5px 0 #DAE8A9;
+}
+.cell .veg { width: 91%; height: 91%; }
+.cell.dragging .tile-piece { box-shadow: inset 0 -1.5px 0 #DAE8A9, 0 3px 5px #294E3133; }
+.controls {
+  flex: none;
+  width: min(74%, 310px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(32px, 13vw, 64px);
+  padding: 6px 0 3px;
+  margin-bottom: 4px;
+}
+.controls .tool {
+  min-height: 66px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 8px;
+  background: #29A9F6;
+  border: 2px solid #435D42;
+  border-radius: 10px;
+  box-shadow: inset 0 2px 0 #7DD9FF, 0 5px 0 #46754B;
+  color: #193F33;
+  font-size: 12px;
+}
+.controls .tool svg { width: 32px; height: 32px; stroke: #42501F; fill: #FFDC35; stroke-width: 2.2; }
+.tool__badge { background: #26372C; color: #FFFFFF; border: 1.5px solid #FFFCD2; width: 24px; height: 24px; }
+.controls .tool:disabled { opacity: .6; }
+.controls .tool:active { transform: translateY(3px); box-shadow: inset 0 2px 0 #7DD9FF, 0 2px 0 #46754B; }
+.dialog__card { background: #FFFED7; border-color: #C6943E; }
+@media (max-width: 360px) {
+  .title { font-size: 20px; }
+  .controls { width: 78%; }
+}
+@media (orientation: landscape) and (max-height: 620px) {
+  body { min-height: 100svh; }
+  .game-header { width: min(100%, 494px); }
+  .progress-hud { display: none; }
+  .board-wrap { flex: none; }
+}
+
+/* Original source palette, paired with the larger phone layout. */
+:root {
+  --color-primary: #E94D85;
+  --color-on-primary: #FFFFFF;
+  --color-secondary: #2E87C8;
+  --color-accent: #F5B700;
+  --color-bg: #48B979;
+  --color-fg: #33291C;
+  --color-muted: #FFF4B8;
+  --color-border: #66742E;
+  --color-destructive: #C83A32;
+  --color-ring: #FF4F9A;
+  --color-sky: #CDEFFC;
+  --color-grass: #48B979;
+  --color-grass-dark: #2E955E;
+  --color-tile: #FFF8C9;
+  --color-tile-shadow: #E7D98D;
+  --color-grid: #66742E;
+  --color-wood: #B87838;
+  --color-wood-light: #D59A50;
+  --color-wood-dark: #55351F;
+  --color-ink: #33291C;
+}
+body { background: var(--color-grass); color: var(--color-fg); }
+.topbar { background: #FFFDF0; border: 2px solid var(--color-ink); border-radius: 12px; box-shadow: 0 3px 0 var(--color-wood-dark); }
+.title { color: #E94D45; -webkit-text-stroke: .45px var(--color-ink); paint-order: stroke fill; text-shadow: none; }
+.meta { color: var(--color-ink); background: var(--color-muted); border-color: var(--color-ink); }
+.tool--compact { background: #FFF4B8; border-color: var(--color-ink); box-shadow: 0 2px 0 var(--color-wood-dark); }
+.progress-track { background: var(--color-grid); border-color: var(--color-wood-dark); }
+.progress-value { color: #FFF8C9; }
+.progress-fill { background: #F5B700; }
+.tip { color: #55351F; }
+.board { background: var(--color-grid); border-color: var(--color-wood-light); outline-color: var(--color-wood-dark); box-shadow: 0 5px 0 var(--color-wood-dark), 0 8px 0 #2E955E; }
+.tile-piece { background: var(--color-tile); border-color: #5C4A32; box-shadow: inset 0 -1.5px 0 var(--color-tile-shadow); }
+.cell:hover .tile-piece { background: #FFFDE1; }
+.cell.dragging .tile-piece { box-shadow: inset 0 -1.5px 0 var(--color-tile-shadow), 0 3px 5px #55351F33; }
+.cell.selected .tile-piece { background: #FFF1A6; border-color: #BD8525; box-shadow: 0 0 0 2px var(--color-accent); }
+.controls .tool { border-color: var(--color-ink); color: var(--color-ink); box-shadow: inset 0 2px 0 #FFFFFF50, 0 5px 0 var(--color-wood-dark); }
+.controls .tool--hint { background: #FFD34E; }
+.controls .tool--shuffle { background: #52B7E8; }
+.controls .tool svg { stroke: var(--color-ink); fill: none; }
+.tool__badge { background: #E94D45; border-color: var(--color-ink); }
+.controls .tool:active { box-shadow: inset 0 2px 0 #FFFFFF50, 0 2px 0 var(--color-wood-dark); }
+.dialog__card { background: #FFF9D5; border-color: var(--color-wood-light); outline-color: var(--color-wood-dark); }

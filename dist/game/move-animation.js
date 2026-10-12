@@ -16,7 +16,7 @@ export function createMoveAnimator({
   // 轨迹亮线（格子的 ::before）才能钉在真实格位；svg 需有定位
   // （styles.css 中 .cell .veg { position: relative }）z-index 才生效
   function pieceOf(el) {
-    return el.querySelector?.('.veg') || el;
+    return el.querySelector?.('.tile-piece') || el.querySelector?.('.veg') || el;
   }
 
   function clearStyles(target) {
@@ -90,11 +90,10 @@ export function createMoveAnimator({
       // 反复光栅化大阴影图层
       const piece = pieceOf(el);
       // transition 只需在首次加入时压掉 CSS 过渡
-      if (!following.has(el)) {
-        piece.style.transition = 'none';
-        piece.style.willChange = 'transform';
-        piece.style.zIndex = '10';
-      }
+      // syncDOM may replace the SVG while retaining its cell element.
+      piece.style.transition = 'none';
+      piece.style.willChange = 'transform';
+      piece.style.zIndex = '10';
       piece.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
     }
     following = next;

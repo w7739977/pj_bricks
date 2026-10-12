@@ -6,8 +6,8 @@ const FIXED_SEEDS = Object.freeze([
   0x5e6f7081,
 ]);
 
-const HINTS = Object.freeze([3, 3, 2, 2, 1, 1]);
-const RESHUFFLES = Object.freeze([3, 2, 2, 1]);
+const HINTS = Object.freeze([3, 2, 2, 1, 1, 0]);
+const RESHUFFLES = Object.freeze([2, 2, 1, 1]);
 const BASE_ICON_COUNT = 14;
 const MAX_ICON_COUNT = 20;
 
@@ -47,6 +47,8 @@ export function getLevelConfig(levelNumber, { randomSeed = null } = {}) {
   const fixedSeed = FIXED_SEEDS[levelNumber - 1];
   const seed = fixedSeed === undefined ? assertUint32(randomSeed) : fixedSeed;
   const iconCount = Math.min(MAX_ICON_COUNT, BASE_ICON_COUNT + levelNumber - 1);
+  const openingMax = [16, 13, 11, 9, 7, 6, 5, 4, 3, 3][levelNumber - 1] ?? (levelNumber < 15 ? 2 : 1);
+  const openingMin = [12, 10, 8, 6, 5, 4, 3, 2, 2, 1][levelNumber - 1] ?? 1;
   const hints = HINTS[levelNumber - 1] ?? 0;
   const reshuffles = RESHUFFLES[levelNumber - 1] ?? 1;
 
@@ -55,6 +57,7 @@ export function getLevelConfig(levelNumber, { randomSeed = null } = {}) {
     seed,
     iconIndices: Object.freeze(Array.from({ length: iconCount }, (_, i) => i)),
     iconCount,
+    openingPairs: Object.freeze({ min: openingMin, max: openingMax }),
     hints,
     reshuffles,
     unlockedIconIndex: levelNumber >= 2 && levelNumber <= 7

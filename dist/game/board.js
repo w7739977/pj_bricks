@@ -38,14 +38,64 @@ function poolToBoard(pool) {
   );
 }
 
+// Count opening choices once per undirected edge (a full board has no gaps).
+export function countOpeningPairs(board) {
+  let count = 0;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (board[r][c] === null) continue;
+    if (c + 1 < COLS && board[r][c] === board[r][c + 1]) count++;
+    if (r + 1 < ROWS && board[r][c] === board[r + 1][c]) count++;
+  }
+  return count;
+}
+
+// Local pair swaps preserve every icon's even count. Only affected edges are scored.
+function tuneOpeningPairs(board, range, rng) {
+  let count = countOpeningPairs(board);
+  const penalty = value => Math.max(range.min - value, value - range.max, 0);
+  for (let step = 0; step < 400 && penalty(count) > 0; step++) {
+    const a = Math.floor(rng() * CELL_COUNT);
+    const b = Math.floor(rng() * CELL_COUNT);
+    const ar = Math.floor(a / COLS), ac = a % COLS;
+    const br = Math.floor(b / COLS), bc = b % COLS;
+    if (board[ar][ac] === board[br][bc]) continue;
+    const edges = new Set();
+    for (const index of [a,b]) {
+      const r = Math.floor(index / COLS), c = index % COLS;
+      const neighbours = [];
+      if (r > 0) neighbours.push(index - COLS);
+      if (r + 1 < ROWS) neighbours.push(index + COLS);
+      if (c > 0) neighbours.push(index - 1);
+      if (c + 1 < COLS) neighbours.push(index + 1);
+      for (const other of neighbours) edges.add(`${Math.min(index,other)},${Math.max(index,other)}`);
+    }
+    const affected = [...edges].map(edge => edge.split(',').map(Number));
+    const localCount = () => affected.reduce((sum,[x,y]) => sum + (
+      board[Math.floor(x/COLS)][x%COLS] === board[Math.floor(y/COLS)][y%COLS] ? 1 : 0
+    ),0);
+    const before = localCount();
+    [board[ar][ac], board[br][bc]] = [board[br][bc], board[ar][ac]];
+    const next = count + localCount() - before;
+    if (penalty(next) <= penalty(count)) count = next;
+    else [board[ar][ac], board[br][bc]] = [board[br][bc], board[ar][ac]];
+  }
+  return count >= range.min && count <= range.max;
+}
+
 // ---- 棋盘构造 ----
-export function createBoard({ iconIndices, rng = Math.random, maxAttempts = 1000 }) {
+export function createBoard({ iconIndices, rng = Math.random, maxAttempts = 1000, openingPairs = null }) {
   validateIconIndices(iconIndices);
+  if (openingPairs && (!Number.isInteger(openingPairs.min) || !Number.isInteger(openingPairs.max) ||
+      openingPairs.min < 1 || openingPairs.max < openingPairs.min)) {
+    throw new RangeError('openingPairs must have integer bounds with 1 <= min <= max');
+  }
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const pool = createPairPool(iconIndices);
     shuffleInPlace(pool, rng);
     const board = poolToBoard(pool);
-    if (hasAnySolvablePair(board)) return { ok: true, board };
+    if (openingPairs) {
+      if (tuneOpeningPairs(board, openingPairs, rng)) return { ok: true, board };
+    } else if (hasAnySolvablePair(board)) return { ok: true, board };
   }
   return { ok: false, reason: 'no-solvable-pair' };
 }

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createDialogManager } from '../game/dialogs.js';
+import { createDialogManager } from '../dist/game/dialogs.js';
 
 function fakeElement() {
   const listeners = new Map();

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createMoveAnimator } from '../game/move-animation.js';
+import { createMoveAnimator } from '../dist/game/move-animation.js';
 
 function createScheduler() {
   let nextId = 1;
@@ -405,4 +405,50 @@ test('cancelAll clears active cells and blocks retained callbacks', () => {
     { transition: '', transform: '', willChange: '', zIndex: '' },
     { transition: '', transform: '', willChange: '', zIndex: '' },
   ]);
+});
+
+
+test('follow initializes a replacement SVG inside an existing followed cell', () => {
+  const scheduler = createScheduler();
+  let piece = createCell();
+  const cell = createCell();
+  cell.querySelector = () => piece;
+  const animator = createMoveAnimator({
+    getCell: () => cell,
+    getPitch: () => 40,
+    requestFrame: scheduler.requestFrame,
+    cancelFrame: scheduler.cancelFrame,
+    setTimer: scheduler.setTimer,
+    clearTimer: scheduler.clearTimer,
+  });
+  animator.follow([{ r: 0, c: 0 }], 35, 0);
+  piece = createCell();
+  animator.follow([{ r: 0, c: 0 }], -5, 0);
+  assert.equal(piece.style.transition, 'none');
+  assert.equal(piece.style.willChange, 'transform');
+  assert.equal(piece.style.zIndex, '10');
+  assert.equal(piece.style.transform, 'translate3d(-5px, 0px, 0)');
+});
+
+
+test('drag moves the full tile surface and preserves the SVG local size', () => {
+  const scheduler = createScheduler();
+  const surface = createCell();
+  const svg = createCell();
+  const cell = createCell();
+  cell.querySelector = selector => selector === '.tile-piece' ? surface : svg;
+  const animator = createMoveAnimator({
+    getCell: () => cell, getPitch: () => 35.5,
+    requestFrame: scheduler.requestFrame, cancelFrame: scheduler.cancelFrame,
+    setTimer: scheduler.setTimer, clearTimer: scheduler.clearTimer,
+  });
+  animator.follow([{r: 0, c: 0}], 25, 0);
+  assert.equal(surface.style.transform, 'translate3d(25px, 0px, 0)');
+  assert.equal(svg.style.transform, '');
+  animator.settleFollow(90);
+  scheduler.runFrame(scheduler.frameIds().at(-1));
+  scheduler.runTimer(scheduler.timerIds().at(-1));
+  assert.equal(surface.style.transform, '');
+  assert.equal(surface.style.willChange, '');
+  assert.equal(svg.style.transform, '');
 });

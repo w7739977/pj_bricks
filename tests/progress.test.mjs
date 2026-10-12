@@ -7,7 +7,7 @@ import {
   loadProgress,
   parseProgress,
   saveProgress,
-} from '../game/progress.js';
+} from '../dist/game/progress.js';
 
 const fixed = JSON.stringify({
   version: 1,

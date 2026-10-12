@@ -5,7 +5,7 @@ import {
   createRandomSeed,
   createSeededRng,
   getLevelConfig,
-} from '../game/levels.js';
+} from '../dist/game/levels.js';
 
 test('level configuration grows from fourteen icons to twenty and then caps', () => {
   assert.deepEqual(
@@ -32,8 +32,8 @@ test('level resource budgets match the approved curve', () => {
   const configs = Array.from({ length: 8 }, (_, i) =>
     getLevelConfig(i + 1, { randomSeed: 123 }),
   );
-  assert.deepEqual(configs.map(({ hints }) => hints), [3, 3, 2, 2, 1, 1, 0, 0]);
-  assert.deepEqual(configs.map(({ reshuffles }) => reshuffles), [3, 2, 2, 1, 1, 1, 1, 1]);
+  assert.deepEqual(configs.map(({ hints }) => hints), [3, 2, 2, 1, 1, 0, 0, 0]);
+  assert.deepEqual(configs.map(({ reshuffles }) => reshuffles), [2, 2, 1, 1, 1, 1, 1, 1]);
 });
 
 test('new fruit indices unlock only on levels two through seven', () => {
@@ -63,4 +63,17 @@ test('random seed uses crypto and falls back to the supplied random source', () 
   };
   assert.equal(createRandomSeed(cryptoSource), 0x89abcdef);
   assert.equal(createRandomSeed(null, () => 0.5), 0x80000000);
+});
+
+test('opening choices and assistance decrease as the icon pool grows', () => {
+  const configs = Array.from({length:20},(_,i)=>getLevelConfig(i+1,{randomSeed:123}));
+  for(let i=1;i<configs.length;i++) {
+    assert.ok(configs[i].iconCount >= configs[i-1].iconCount);
+    assert.ok(configs[i].openingPairs.max <= configs[i-1].openingPairs.max);
+    assert.ok(configs[i].hints <= configs[i-1].hints);
+    assert.ok(configs[i].reshuffles <= configs[i-1].reshuffles);
+    assert.ok(configs[i].openingPairs.min >= 1);
+  }
+  assert.deepEqual(configs[0].openingPairs,{min:12,max:16});
+  assert.deepEqual(configs[14].openingPairs,{min:1,max:1});
 });

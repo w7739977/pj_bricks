@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createLevelSession } from '../game/level-session.js';
+import { createLevelSession } from '../dist/game/level-session.js';
 
 function session({ level = 4, seed = null, hints = 2, reshuffles = 1 } = {}) {
   return createLevelSession({
