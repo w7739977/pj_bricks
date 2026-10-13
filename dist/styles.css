@@ -746,3 +746,19 @@ body { background: var(--color-grass); color: var(--color-fg); }
 .drag-layer .tile-piece { inset: 0; visibility: visible; }
 .drag-layer .veg { width: 91%; height: 91%; display: block; pointer-events: none; }
 .frame-meter { position: fixed; left: 50%; bottom: max(4px, env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 3px 8px; border-radius: 5px; background: #33291CDD; color: #FFF8C9; font: 11px/1.5 system-ui,sans-serif; white-space: nowrap; pointer-events: none; z-index: 100; }
+
+/* Center the play area when space permits, retaining full-width touch cells. */
+@media (orientation: portrait) {
+  :root {
+    --pitch: min(48px, calc((100vw - 22px) / 10));
+  }
+  body {
+    justify-content: center;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+  .game-header, .tip { flex: none; }
+  .topbar { height: 44px; }
+  .progress-hud { margin-top: 6px; }
+  .board-wrap { flex: none; }
+  .controls .tool { min-height: 58px; }
+}
