@@ -1,6 +1,6 @@
 # 田园连连看 · 简洁 Q 版
 
-当前在线版完整源码及素材（2026-10-13，用户验收通过）。游戏内容对应部署提交 `9150549fc6c2656f1922ea925fdd6f2c56c702f6`。
+当前在线版完整源码及素材（2026-10-13，用户验收通过）。游戏内容对应部署提交 `c95906dc55e8833663f8486f760d39471b62c042`。
 
 ## 快速运行
 
@@ -28,7 +28,7 @@ PORT=8080 node server.js
 - `tools/export-sprites.cjs`：图案隔离导出工具（仅重新导出需要 sharp）。
 - `CHANGELOG.md`、`docs/CHANGELOG.md`：完整修改记录与验收结果。
 - `dist/assets/*.prompt.txt`：贴图生成说明。
-- `tests/`：106 项自动回归测试。
+- `tests/`：107 项自动回归测试。
 - `server.js`：独立静态服务器，默认端口 3013，静态根目录为 dist。
 
 原图集作为编辑源保留；当前角色由 `dist/game/svg-icons.js` 指向独立 PNG。
@@ -39,7 +39,7 @@ PORT=8080 node server.js
 npm test
 ```
 
-或 `node --test tests/*.test.mjs`。打包前结果：106 项通过，记录见 TEST_RESULTS.txt。
+或 `node --test tests/*.test.mjs`。打包前结果：107 项通过，记录见 TEST_RESULTS.txt。
 
 ## 用 Nginx 部署
 
@@ -72,3 +72,7 @@ server {
 ## 最新布局（2026-10-13 晚）
 
 恢复满宽大棋盘；保留精简顶栏与整组垂直居中。393px 视口每格约 37.1px。较矮窗口允许自然滚动，避免格子缩小影响操作。
+
+## 浏览器可视区域适配版（2026-10-13 21:49）
+
+通过 visualViewport 读取页面实际可见高度，矮竖屏自动精简顶栏和进度条、移除空白提示行并将道具横排，保留满宽大格子。浏览器工具栏展开或收起时更新布局。将新包的完整 dist 覆盖到实际运行目录；Node 服务以 server.js 所在目录下的 dist 为静态根目录。

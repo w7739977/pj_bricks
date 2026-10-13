@@ -753,6 +753,7 @@ body { background: var(--color-grass); color: var(--color-fg); }
     --pitch: min(48px, calc((100vw - 22px) / 10));
   }
   body {
+    min-height: var(--play-height, 100svh);
     justify-content: center;
     padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
@@ -761,4 +762,27 @@ body { background: var(--color-grass); color: var(--color-fg); }
   .progress-hud { margin-top: 6px; }
   .board-wrap { flex: none; }
   .controls .tool { min-height: 58px; }
+}
+
+/* Short browser window: spend space on the board, not separate HUD rows. */
+@media (orientation: portrait) {
+  .compact-browser body { padding-top: 4px; padding-bottom: 8px; gap: 4px; }
+  .compact-browser .topbar { height: 36px; border-radius: 9px; }
+  .compact-browser .title { font-size: 19px; }
+  .compact-browser .tool--compact { width: 29px; min-height: 29px; }
+  .compact-browser .tool--compact svg { width: 20px; height: 20px; }
+  .compact-browser .progress-hud { height: 6px; margin: 4px auto 0; width: 78%; }
+  .compact-browser .progress-value { font-size: 10px; }
+  .compact-browser .progress-track { height: 6px; }
+  .compact-browser .progress-gift { display: none; }
+  .compact-browser .tip:empty { display: none; }
+  .compact-browser .tip:not(:empty) {
+    position: fixed; top: 48px; left: 50%; transform: translateX(-50%);
+    width: max-content; max-width: 92%; padding: 3px 8px;
+    background: #FFF8C9F2; border-radius: 6px; z-index: 50; pointer-events: none;
+  }
+  .compact-browser .board-wrap { padding: 0 0 8px; }
+  .compact-browser .controls { width: min(74%, 310px); padding: 0; margin-bottom: 4px; }
+  .compact-browser .controls .tool { min-height: 44px; flex-direction: row; gap: 6px; padding: 4px 8px; }
+  .compact-browser .controls .tool svg { width: 25px; height: 25px; }
 }

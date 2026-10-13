@@ -1,4 +1,7 @@
 import { initGame } from './interaction.js';
+import { installViewportLayout } from './viewport-layout.js';
+
+installViewportLayout();
 
 // 等待 DOM 就绪
 if (document.readyState === 'loading') {
