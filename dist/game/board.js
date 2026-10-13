@@ -170,6 +170,7 @@ export function hasAnySolvablePair(board) {
 // ---- 重排（就地）----
 export function reshuffleInPlace(board, rng = Math.random, { maxAttempts = 1000 } = {}) {
   const snapshot = cloneBoard(board);
+  let playableFallback = null;
   const positions = [];
   const pieces = [];
 
@@ -186,8 +187,15 @@ export function reshuffleInPlace(board, rng = Math.random, { maxAttempts = 1000 
     shuffleInPlace(pieces, rng);
     positions.forEach(({ r, c }, i) => { board[r][c] = pieces[i]; });
     if (hasAnySolvablePair(board)) return { ok: true };
+    // Prefer an immediate pair, but a legal drag is also a playable outcome.
+    // Sparse occupied positions may make any immediate pair impossible.
+    if (!playableFallback && hasAnySolvablePairDeep(board)) playableFallback = cloneBoard(board);
   }
 
+  if (playableFallback) {
+    restoreBoard(board, playableFallback);
+    return { ok: true };
+  }
   restoreBoard(board, snapshot);
   return { ok: false, reason: 'no-solvable-pair' };
 }
@@ -298,77 +306,41 @@ export function restoreBoard(board, snap) {
 // ---- 死局检测：拖拽可达口径 ----
 // 游戏规则：拖拽要么消除并落位，要么整体还原——不存在"滑过去但没消除、
 // 棋子留在新位置"的中间态。因此可解 = 存在直接配对（零拖拽），或存在
-// 某一次拖拽，拖完后产生**涉及被拖棋子**的直接配对（消除目标必须属于
-// 被抓棋子）。多步滑移中转在真实规则里不可达，不作搜索。
+// 某一次拖拽，拖完后被抓棋子在最终位置能直接配对。
+// 只靠链上其他棋子或未被移动的棋子出现配对不算合法落子。多步滑移中转在真实规则里不可达，不作搜索。
 // 拖拽主体是"链"：抓取段内任意子链（抓中间一颗时只有其前方部分跟随），
 // 枚举按子链口径展开。
-
-// 枚举所有合法拖拽：段的任意子链（正向抓取=后缀链，反向抓取=前缀链）
-// 沿拖拽方向滑 k 格（k=1..前方连续空位数）
-function enumerateDragMoves(board) {
-  const moves = [];
-  const tryLine = (isRow, fixed, len) => {
-    const at = i => isRow ? board[fixed][i] : board[i][fixed];
-    let i = 0;
-    while (i < len) {
-      if (at(i) === null) { i++; continue; }
-      let j = i;
-      while (j + 1 < len && at(j + 1) !== null) j++;
-      let leftRun = 0;
-      while (i - 1 - leftRun >= 0 && at(i - 1 - leftRun) === null) leftRun++;
-      let rightRun = 0;
-      while (j + 1 + rightRun < len && at(j + 1 + rightRun) === null) rightRun++;
-      // 正向：抓取点 split，链 = [split..hi]；反向：链 = [lo..split]
-      for (let split = i; split <= j; split++) {
-        for (let k = 1; k <= rightRun; k++)
-          moves.push({ axis: isRow ? 'row' : 'col', fixed, lo: split, hi: j, dir: 1, dist: k });
-        for (let k = 1; k <= leftRun; k++)
-          moves.push({ axis: isRow ? 'row' : 'col', fixed, lo: i, hi: split, dir: -1, dist: k });
-      }
-      i = j + 1;
-    }
-  };
-  for (let r = 0; r < ROWS; r++) tryLine(true, r, COLS);
-  for (let c = 0; c < COLS; c++) tryLine(false, c, ROWS);
-  return moves;
-}
-
-function applySingleShift(board, s) {
-  const next = cloneBoard(board);
-  const d = s.dist * s.dir;
-  if (s.axis === 'row') {
-    if (d > 0) {
-      for (let i = s.hi; i >= s.lo; i--) { next[s.fixed][i + d] = next[s.fixed][i]; next[s.fixed][i] = null; }
-    } else {
-      for (let i = s.lo; i <= s.hi; i++) { next[s.fixed][i + d] = next[s.fixed][i]; next[s.fixed][i] = null; }
-    }
-  } else if (d > 0) {
-    for (let i = s.hi; i >= s.lo; i--) { next[i + d][s.fixed] = next[i][s.fixed]; next[i][s.fixed] = null; }
-  } else {
-    for (let i = s.lo; i <= s.hi; i++) { next[i + d][s.fixed] = next[i][s.fixed]; next[i][s.fixed] = null; }
-  }
-  return next;
-}
 
 export function findSolvablePairDeep(board) {
   const direct = findSolvablePair(board);
   if (direct) return { direct: true, depth: 0, pair: direct, board: null };
 
-  for (const move of enumerateDragMoves(board)) {
-    const next = applySingleShift(board, move);
-    const pair = findSolvablePair(next);
-    if (!pair) continue;
-    // 消除目标必须涉及被拖链上的棋子（目标属于被抓棋子）
-    const d = move.dist * move.dir;
-    const moved = new Set();
-    for (let i = move.lo; i <= move.hi; i++) {
-      if (move.axis === 'row') moved.add(i + d);
-      else moved.add(i);
+  // Use exactly the fixed-chain movement and grabbed-cell matching used on release.
+  // A gesture may reverse direction after its chain has been fixed.
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (board[r][c] === null) continue;
+    for (const axis of ['row', 'col']) for (const dir of [-1, 1]) {
+      const chain = createShiftChain(board, r, c, axis, dir);
+      for (const moveDir of [-1, 1]) {
+        const probe = cloneBoard(board);
+        const capacity = Math.abs(applyShift(probe, r, c, chain, moveDir * (axis === 'row' ? COLS : ROWS)).applied);
+        for (let dist = 1; dist <= capacity; dist++) {
+          const next = cloneBoard(board);
+          const delta = moveDir * dist;
+          applyShift(next, r, c, chain, delta);
+          const toR = axis === 'col' ? r + delta : r;
+          const toC = axis === 'row' ? c + delta : c;
+          const targets = findTargets(next, toR, toC);
+          if (!targets.length) continue;
+          const target = targets[0];
+          return {
+            direct: false, depth: 1,
+            pair: { r1: toR, c1: toC, r2: target.r, c2: target.c },
+            shiftFrom: { r, c, chain, delta }, board: next,
+          };
+        }
+      }
     }
-    const involves = move.axis === 'row'
-      ? (pair.r1 === move.fixed && moved.has(pair.c1)) || (pair.r2 === move.fixed && moved.has(pair.c2))
-      : (pair.c1 === move.fixed && moved.has(pair.r1)) || (pair.c2 === move.fixed && moved.has(pair.r2));
-    if (involves) return { direct: false, depth: 1, pair, shiftFrom: move, board: next };
   }
   return { direct: false, depth: -1, pair: null, board: null };
 }

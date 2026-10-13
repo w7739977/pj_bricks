@@ -190,6 +190,48 @@ function deepEmptyBoard() {
   return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 }
 
+test('IMG_2908 four-piece endgame is solvable by dragging bottom corn upward', () => {
+  const b = deepEmptyBoard();
+  b[4][9] = 2; b[13][9] = 2; // tomatoes blocked by corn
+  b[5][9] = 3; b[13][6] = 3; // corn
+  const before = cloneBoard(b);
+  assert.equal(findSolvablePair(b), null);
+  const chain = createShiftChain(b, 13, 6, 'col', -1);
+  const playable = cloneBoard(b);
+  assert.equal(applyShift(playable, 13, 6, chain, -8).applied, -8);
+  assert.deepEqual(findTargets(playable, 5, 6), [{ r: 5, c: 9 }]);
+  assert.equal(hasAnySolvablePairDeep(b), true);
+  const result = findSolvablePairDeep(b);
+  assert.ok(result.pair);
+  const {r,c,chain: foundChain,delta} = result.shiftFrom;
+  const replay = cloneBoard(b);
+  assert.equal(applyShift(replay,r,c,foundChain,delta).applied,delta);
+  assert.ok(findTargets(replay,result.pair.r1,result.pair.c1).some(t => t.r===result.pair.r2 && t.c===result.pair.c2));
+  assert.deepEqual(b,before);
+});
+
+test('sparse endgame search stays reflection-symmetric and returns playable grabbed-cell matches', () => {
+  const rng = createSeededRng(2908);
+  for (let n=0;n<100;n++) {
+    const b=deepEmptyBoard();
+    for(let i=0;i<12;i++) {
+      let r,c;
+      do { r=Math.floor(rng()*ROWS); c=Math.floor(rng()*COLS); } while(b[r][c]!==null);
+      b[r][c]=Math.floor(i/2);
+    }
+    const before=cloneBoard(b), result=findSolvablePairDeep(b);
+    assert.equal(hasAnySolvablePairDeep(b.map(row=>row.slice().reverse())),!!result.pair);
+    assert.equal(hasAnySolvablePairDeep(b.slice().reverse()),!!result.pair);
+    if(result.pair && !result.direct) {
+      const {r,c,chain,delta}=result.shiftFrom, replay=cloneBoard(b);
+      assert.equal(applyShift(replay,r,c,chain,delta).applied,delta);
+      assert.deepEqual(replay,result.board);
+      assert.ok(findTargets(replay,result.pair.r1,result.pair.c1).some(t=>t.r===result.pair.r2&&t.c===result.pair.c2));
+    }
+    assert.deepEqual(b,before);
+  }
+});
+
 test('findSolvablePairDeep finds pair reachable by one shift', () => {
   // 无直接配对：两枚 A 被列 0 的其它棋子隔开；
   // 但第 1 行整行左移 1 格后，两枚 A 在行 1 上直连。

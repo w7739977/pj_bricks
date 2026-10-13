@@ -624,6 +624,8 @@ async function handleDeadlock() {
   // 兜底守卫：过渡态（拖拽/多目标待定/动画窗口）绝不弹死局框
   if (state.busy || state.drag || state.mode !== 'idle' || state.pendingRevert ||
       state.phase !== 'playing') return;
+  // Revalidate the current board at the final entry point, including hint calls.
+  if (hasAnySolvablePairDeep(state.board)) return;
   const sessionId = state.levelSessionId;
   const outcome = state.levelSession.deadlock();
   setBusy(true);
