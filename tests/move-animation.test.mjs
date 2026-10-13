@@ -452,3 +452,98 @@ test('drag moves the full tile surface and preserves the SVG local size', () => 
   assert.equal(surface.style.willChange, '');
   assert.equal(svg.style.transform, '');
 });
+
+function layerFixture(count=4) {
+  let reads=0,queries=0;
+  function node(rect=null) {
+    const values=new Set();
+    const n={style:{transition:'',transform:'',willChange:'',zIndex:''},children:[],
+      classList:{add(...v){v.forEach(x=>values.add(x));},remove(...v){v.forEach(x=>values.delete(x));},contains(v){return values.has(v);}},
+      setAttribute(){},removeAttribute(){},querySelector(){return null;},
+      appendChild(child){this.children.push(child);child.parent=this;},
+      remove(){if(this.parent)this.parent.children=this.parent.children.filter(x=>x!==this);},
+      getBoundingClientRect(){reads++;return rect;},
+      get offsetWidth(){reads++;return 160;},
+      cloneNode(){return node(rect);},
+    };
+    return n;
+  }
+  const board=node({left:100,top:50,right:500,bottom:600});board.clientLeft=board.clientTop=4;
+  const pieces=[],cells=[];
+  for(let c=0;c<count;c++) {
+    const piece=node();pieces.push(piece);
+    const left=107+c*37.1;
+    const cell=node({left,top:57,right:left+37.1,bottom:94.1});
+    cell.querySelector=()=>{queries++;return piece;};cells.push(cell);
+  }
+  const scheduler=createScheduler();
+  let lookups=0;
+  const animator=createMoveAnimator({getCell:(_r,c)=>{lookups++;return cells[c];},getPitch:()=>37.1,
+    getBoard:()=>board,createElement:()=>node(),requestFrame:scheduler.requestFrame,
+    cancelFrame:scheduler.cancelFrame,setTimer:scheduler.setTimer,clearTimer:scheduler.clearTimer});
+  const positions=cells.map((_el,c)=>({r:0,c}));
+  return {board,pieces,cells,scheduler,animator,positions,stats:()=>({reads,queries,lookups})};
+}
+
+test('an entire fourteen-tile chain uses one transform and no layout reads or queries during follow', () => {
+  const f=layerFixture(14);
+  f.animator.follow(f.positions,0,0);
+  assert.equal(f.board.children.length,1);
+  const layer=f.board.children[0];
+  assert.equal(layer.children.length,14);
+  assert.ok(Math.abs(parseFloat(layer.style.left)-3)<1e-8);
+  const before=f.stats();
+  let writes=0;
+  layer.style=new Proxy(layer.style,{set(target,key,value){if(key==='transform')writes++;target[key]=value;return true;}});
+  for(let frame=1;frame<=120;frame++)f.animator.follow(f.positions,frame/3,0);
+  assert.deepEqual(f.stats(),before);
+  assert.equal(writes,120);
+  assert.equal(layer.style.transform,'translate3d(40px, 0px, 0)');
+  for(const piece of f.pieces)assert.equal(piece.style.transform,'');
+  for(const cell of f.cells)assert.equal(cell.classList.contains('drag-source'),true);
+});
+
+test('settling an overlay keeps sources hidden until it finishes then releases once', () => {
+  const f=layerFixture();let complete=0;
+  f.animator.follow(f.positions,11,0);
+  f.animator.settleFollow(90,()=>complete++);
+  assert.equal(f.board.children.length,1);
+  assert.ok(f.cells.every(el=>el.classList.contains('drag-source')));
+  f.scheduler.runFrame(f.scheduler.frameIds().at(-1));
+  f.scheduler.runTimer(f.scheduler.timerIds().at(-1));
+  assert.equal(f.board.children.length,0);
+  assert.ok(f.cells.every(el=>!el.classList.contains('drag-source')));
+  assert.equal(complete,1);
+  f.scheduler.runTimer(f.scheduler.timerIds().at(-1));
+  assert.equal(complete,1);
+});
+
+test('landing switches to real tiles before match effects rather than hiding exploding tiles', () => {
+  const f=layerFixture();
+  f.animator.follow(f.positions,41,0);
+  f.animator.releaseFollow();
+  f.animator.follow(f.positions,4,0,{useLayer:false});
+  assert.equal(f.board.children.length,0);
+  for(const cell of f.cells)assert.equal(cell.classList.contains('drag-source'),false);
+  for(const piece of f.pieces)assert.equal(piece.style.transform,'translate3d(4px, 0px, 0)');
+});
+
+test('retained overlay callbacks cannot hide or remove a newer gesture', () => {
+  const f=layerFixture();
+  f.animator.follow(f.positions,11,0);
+  f.animator.settleFollow(90);
+  const oldFrame=f.scheduler.frameIds().at(-1);
+  f.scheduler.runFrame(oldFrame);
+  const oldTimer=f.scheduler.timerIds().at(-1);
+  f.animator.cancelAll();
+  f.animator.follow(f.positions,22,0);
+  const current=f.board.children[0];
+  f.scheduler.runFrame(oldFrame);f.scheduler.runTimer(oldTimer);
+  assert.equal(f.board.children.length,1);
+  assert.equal(f.board.children[0],current);
+  assert.equal(current.style.transform,'translate3d(22px, 0px, 0)');
+  assert.ok(f.cells.every(el=>el.classList.contains('drag-source')));
+  f.animator.cancelAll();
+  assert.equal(f.board.children.length,0);
+  assert.ok(f.cells.every(el=>!el.classList.contains('drag-source')));
+});

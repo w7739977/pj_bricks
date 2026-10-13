@@ -11,7 +11,7 @@ import { createRandomSeed, createSeededRng, getLevelConfig } from './levels.js';
 import { createDefaultProgress, loadProgress, saveProgress } from './progress.js';
 import { playMatchFeedback } from './burst-effects.js';
 import { createMoveAnimator } from './move-animation.js';
-import { advanceDragShift, constrainDragOffset, createDragFrameQueue, createDragInputLock } from './drag-input.js';
+import { advanceDragShift, getDragOffsetBounds, createDragFrameQueue, createDragInputLock } from './drag-input.js';
 
 // ---- 内部状态（模块私有）----
 const state = {
@@ -51,6 +51,7 @@ function motionDuration(duration) {
 const moveAnimator = createMoveAnimator({
   getCell: (r, c) => state.cellEls[r] && state.cellEls[r][c],
   getPitch: () => state.pitch,
+  getBoard: () => document.getElementById('board'),
 });
 const dragInput = createDragInputLock();
 const dialogs = createBrowserDialogManager();
@@ -100,6 +101,7 @@ function clearLevelAsync() {
   state.effectCleanup?.();
   state.effectCleanup = null;
   dragFrames.cancel();
+  hideDragTrace();
   const pointerId = state.drag?.pointerId;
   if (pointerId !== undefined && boardEl().hasPointerCapture?.(pointerId)) {
     boardEl().releasePointerCapture(pointerId);
@@ -345,6 +347,7 @@ function renderBoard() {
 
 // 同步 DOM 文本与 empty 类，不重建监听
 function syncDOM() {
+  moveAnimator.releaseFollow();
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const el = state.cellEls[r][c];
@@ -714,6 +717,7 @@ function onPointerDown(e) {
     axis: null,
     chain: null,
     chainCells: null,
+    bounds: null,
     appliedTotal: 0,
     lastShift: 0,
     dragged: false,
@@ -736,38 +740,39 @@ function onPointerDown(e) {
 // 竖直拖动时所在行随之平移；轴未定时行列均亮。
 // 只增强空白格，已有棋子的格子不染色。
 // 自适应对比由 CSS mix-blend-mode:difference 完成（浅底加深、深底提亮）。
+let traceCells = new Set();
+let vacatedCells = new Set();
+let draggingCells = new Set();
+
 function updateDragTrace() {
-  const els = state.cellEls;
-  if (!els?.length) return;
-  // 拖拽期间 syncDOM 不跑（防掉帧），链条原格仍带着米白格底。
-  // 用独立的 vacated 类做透明化（纯视觉），不碰 syncDOM 的状态类 empty
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-      if (state.board[r][c] === null)
-        els[r][c].classList.add('vacated');
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-      els[r][c].classList.remove('trace');
+  if (!state.cellEls?.length) return;
   const d = state.drag;
-  if (!d || d.locked) return;
-  // 轴未定：整行+整列；已锁轴：沿轴的固定线 + 穿过轴的跟随线
-  const onLine = !d.axis
-    ? (r, c) => r === d.r || c === d.c
+  const nextTrace = new Set();
+  const nextVacated = new Set(draggingCells);
+  const onLine = !d?.axis
+    ? (r,c) => d && (r === d.r || c === d.c)
     : d.axis === 'row'
-      ? (r, c) => r === d.r || c === d.curC
-      : (r, c) => c === d.c || r === d.curR;
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-      if (state.board[r][c] === null && onLine(r, c))
-        els[r][c].classList.add('trace');
+      ? (r,c) => r === d.r || c === d.curC
+      : (r,c) => c === d.c || r === d.curR;
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+    if (state.board[r][c] !== null) continue;
+    const el = state.cellEls[r][c];
+    nextVacated.add(el);
+    if (d && !d.locked && onLine(r,c)) nextTrace.add(el);
+  }
+  for (const el of traceCells) if (!nextTrace.has(el)) el.classList.remove('trace');
+  for (const el of nextTrace) if (!traceCells.has(el)) el.classList.add('trace');
+  for (const el of vacatedCells) if (!nextVacated.has(el)) el.classList.remove('vacated');
+  for (const el of nextVacated) if (!vacatedCells.has(el)) el.classList.add('vacated');
+  traceCells = nextTrace;
+  vacatedCells = nextVacated;
 }
 
 function hideDragTrace() {
-  const els = state.cellEls;
-  if (!els?.length) return;
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-      els[r]?.[c]?.classList.remove('trace', 'vacated', 'dragging');
+  for (const el of traceCells) el.classList.remove('trace');
+  for (const el of vacatedCells) el.classList.remove('vacated');
+  for (const el of draggingCells) el.classList.remove('dragging');
+  traceCells.clear();vacatedCells.clear();draggingCells.clear();
 }
 
 const dragFrames = createDragFrameQueue({
@@ -778,8 +783,9 @@ const dragFrames = createDragFrameQueue({
 
 function onPointerMove(e) {
   if (!state.drag || !dragInput.owns(e.pointerId)) return;
-  if (e.cancelable) e.preventDefault();
-  dragFrames.push(e.clientX, e.clientY);
+  // Pointer delivery is already paint-aligned on many browsers. Do not add another
+  // rAF of latency: a cached chain now costs one compositor transform per event.
+  handleDragMove(e.clientX, e.clientY);
 }
 
 function handleDragMove(x, y) {
@@ -809,8 +815,15 @@ function handleDragMove(x, y) {
       // 完整格底；同时透明化原格（vacated）——中段棋子的原格模型
       // 仍记为被占，若不主动透明化会残留空壳格底在棋盘上
       for (const p of state.drag.chainCells) {
-        state.cellEls[p.r][p.c].classList.add('dragging', 'vacated');
+        const el = state.cellEls[p.r][p.c];
+        el.classList.add('dragging', 'vacated');
+        draggingCells.add(el);
+        vacatedCells.add(el);
       }
+      state.drag.bounds = getDragOffsetBounds({
+        positions: state.drag.chainCells, axis: state.drag.axis,
+        pitch: state.pitch, rows: ROWS, cols: COLS, board: state.drag.snapshot,
+      });
       state.drag.appliedTotal = 0;
       // 整行/列无任何空格时链不可能平移，锁定视觉位移
       if (!hasLineEmptyCell(state.board, state.drag.curR, state.drag.curC, state.drag.axis)) {
@@ -820,12 +833,8 @@ function handleDragMove(x, y) {
     } else return;
   }
 
-  const distance = constrainDragOffset({
-    positions: state.drag.chainCells, axis: state.drag.axis,
-    distance: state.drag.axis === 'row' ? dx : dy,
-    pitch: state.pitch, rows: ROWS, cols: COLS,
-    board: state.drag.snapshot,
-  });
+  const rawDistance = state.drag.axis === 'row' ? dx : dy;
+  const distance = Math.max(state.drag.bounds.min, Math.min(state.drag.bounds.max, rawDistance));
   if (state.drag.locked) {
     state.drag.visualOffset = { x: 0, y: 0 };
     return;
@@ -929,6 +938,7 @@ function onPointerUp(e) {
       getShiftChainPositions(info.curR, info.curC, info.chain),
       info.visualOffset.x,
       info.visualOffset.y,
+      { useLayer: false },
     );
     moveAnimator.settleFollow(snapDuration);
     const target = targets[0];
@@ -957,6 +967,7 @@ function onPointerUp(e) {
       getShiftChainPositions(info.curR, info.curC, info.chain),
       info.visualOffset.x,
       info.visualOffset.y,
+      { useLayer: false },
     );
     if (snapDuration > 0) setBusy(true);
     moveAnimator.settleFollow(snapDuration, () => {
@@ -1014,7 +1025,7 @@ export function initGame() {
 
   const be = boardEl();
   be.addEventListener('pointerdown', onPointerDown);
-  window.addEventListener('pointermove', onPointerMove, { passive: false });
+  window.addEventListener('pointermove', onPointerMove, { passive: true });
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerCancel);
   be.addEventListener('lostpointercapture', onPointerCancel);
@@ -1032,3 +1043,5 @@ function suppressBrowserGestures(boardElm) {
   // 阻止棋盘内长按触发的上下文菜单（桌面右键同理）
   boardElm.addEventListener('contextmenu', e => e.preventDefault());
 }
+
+export function isDragging() { return Boolean(state.drag?.dragged); }

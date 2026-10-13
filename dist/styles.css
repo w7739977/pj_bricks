@@ -738,3 +738,11 @@ body { background: var(--color-grass); color: var(--color-fg); }
 .tool__badge { background: #E94D45; border-color: var(--color-ink); }
 .controls .tool:active { box-shadow: inset 0 2px 0 #FFFFFF50, 0 2px 0 var(--color-wood-dark); }
 .dialog__card { background: #FFF9D5; border-color: var(--color-wood-light); outline-color: var(--color-wood-dark); }
+
+/* One rasterized moving layer for the complete chain; stationary grid stays intact. */
+.drag-source > .tile-piece { visibility: hidden; }
+.drag-layer { position: absolute; z-index: 40; pointer-events: none; transform-origin: 0 0; backface-visibility: hidden; }
+.drag-piece-slot { position: absolute; display: block; }
+.drag-layer .tile-piece { inset: 0; visibility: visible; }
+.drag-layer .veg { width: 91%; height: 91%; display: block; pointer-events: none; }
+.frame-meter { position: fixed; left: 50%; bottom: max(4px, env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 3px 8px; border-radius: 5px; background: #33291CDD; color: #FFF8C9; font: 11px/1.5 system-ui,sans-serif; white-space: nowrap; pointer-events: none; z-index: 100; }

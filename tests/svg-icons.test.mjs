@@ -32,21 +32,21 @@ test('new fruits provide Chinese labels for the unlock dialog', () => {
   );
 });
 
-test('Q characters share a local transparent atlas and do not add a second face overlay', async () => {
+test('every character uses its own transparent PNG without nested atlas clipping', async () => {
   const {readFileSync} = await import('node:fs');
-  const {ATLAS_URL,withFace} = await import('../dist/game/svg-icons.js');
-  const bitmap = readFileSync(new URL(`../dist${ATLAS_URL}`,import.meta.url));
-  assert.equal(bitmap.subarray(1,4).toString(),'PNG');
-  const width = bitmap.readUInt32BE(16),height=bitmap.readUInt32BE(20);
-  assert.equal(bitmap[25],6,'RGBA PNG preserves the transparent background');
+  const {SPRITE_URLS,withFace} = await import('../dist/game/svg-icons.js');
+  assert.equal(new Set(Object.values(SPRITE_URLS)).size,20);
   for(const name of ICON_NAMES) {
+    const url=SPRITE_URLS[name];
+    const bitmap=readFileSync(new URL(`../dist${url}`,import.meta.url));
+    assert.equal(bitmap.subarray(1,4).toString(),'PNG');
+    assert.equal(bitmap.readUInt32BE(16),160);
+    assert.equal(bitmap.readUInt32BE(20),160);
+    assert.equal(bitmap[25],6);
     const svg=ICONS[name];
-    assert.ok(svg.includes(`href="${ATLAS_URL}"`));
-    const nested=svg.match(/width="64" height="64" viewBox="([^"]+)"/);
-    assert.ok(nested);
-    const [x,y,w,h]=nested[1].split(' ').map(Number);
-    assert.ok(x>=0&&y>=0&&x+w<=width&&y+h<=height);
+    assert.ok(svg.includes(`href="${url}"`));
+    assert.equal((svg.match(/<svg/g)||[]).length,1);
+    assert.equal(svg.includes('atlas'),false);
     assert.equal(withFace(svg,'happy'),svg);
-    assert.equal(withFace(svg,'shock'),svg);
   }
 });

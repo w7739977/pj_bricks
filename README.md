@@ -1,6 +1,6 @@
 # 田园连连看 · 简洁 Q 版
 
-当前在线版完整源码及素材（2026-10-12）。游戏内容对应部署提交 `1626ba3ddebfc421c56d67c26415fd5546c20dbf`。
+当前在线版完整源码及素材（2026-10-13，用户验收通过）。游戏内容对应部署提交 `26c74234b034eac70491ef73441e2220140ec2dc`。
 
 ## 快速运行
 
@@ -24,12 +24,14 @@ PORT=8080 node server.js
 - `dist/index.html`：页面布局。
 - `dist/styles.css`：大棋盘布局、第一版配色及动画。
 - `dist/game/`：原生 JavaScript 源码，直接修改即可，无构建过程。
-- `dist/assets/q-garden-clean-atlas.png`：当前 20 个原创简洁 Q 版角色图集。
+- `dist/assets/sprites/`：当前 20 个独立透明 PNG，清除相邻角色残留。
+- `tools/export-sprites.cjs`：图案隔离导出工具（仅重新导出需要 sharp）。
+- `CHANGELOG.md`、`docs/CHANGELOG.md`：完整修改记录与验收结果。
 - `dist/assets/*.prompt.txt`：贴图生成说明。
-- `tests/`：99 项自动回归测试。
+- `tests/`：106 项自动回归测试。
 - `server.js`：独立静态服务器，默认端口 3013，静态根目录为 dist。
 
-其他图集和图标模块作为此前素材版本保留；当前角色由 `dist/game/svg-icons.js` 指向 `q-garden-clean-atlas.png`。
+原图集作为编辑源保留；当前角色由 `dist/game/svg-icons.js` 指向独立 PNG。
 
 ## 测试
 
@@ -37,7 +39,7 @@ PORT=8080 node server.js
 npm test
 ```
 
-或 `node --test tests/*.test.mjs`。打包前结果：99 项通过，记录见 TEST_RESULTS.txt。
+或 `node --test tests/*.test.mjs`。打包前结果：106 项通过，记录见 TEST_RESULTS.txt。
 
 ## 用 Nginx 部署
 
@@ -65,4 +67,4 @@ server {
 - 进度保存在浏览器 localStorage，换设备或域名不会自动同步。
 - 素材和字体不依赖外部 CDN，无需登录或外部 API。
 
-线上源项目包含 dist 和 tests；本包额外提供独立静态服务器、package.json 和启动说明。未包含托管平台配置、Git 元数据或凭据。
+线上源项目包含 dist、tests、tools 和 docs；本包额外提供独立静态服务器、package.json 和启动说明。未包含托管平台配置、Git 元数据或凭据。

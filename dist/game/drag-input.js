@@ -107,7 +107,7 @@ export function createDragFrameQueue({ requestFrame, cancelFrame, onMove }) {
 }
 
 // The immutable gesture snapshot separates push-chain members from obstacles.
-export function constrainDragOffset({ positions, axis, distance, pitch, rows, cols, board }) {
+export function getDragOffsetBounds({ positions, axis, pitch, rows, cols, board }) {
   const indices = positions.map(p => axis === 'row' ? p.c : p.r);
   const limit = axis === 'row' ? cols : rows;
   let backward = Math.min(...indices);
@@ -127,5 +127,10 @@ export function constrainDragOffset({ positions, axis, distance, pitch, rows, co
     backward = freeSteps(-1, backward);
     forward = freeSteps(1, forward);
   }
-  return Math.max(-backward * pitch, Math.min(forward * pitch, distance));
+  return Object.freeze({ min: -backward * pitch, max: forward * pitch });
+}
+
+export function constrainDragOffset(options) {
+  const bounds = getDragOffsetBounds(options);
+  return Math.max(bounds.min, Math.min(bounds.max, options.distance));
 }

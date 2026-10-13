@@ -16,3 +16,10 @@ if (document.fonts && document.fonts.ready) {
 if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   console.info('[a11y] reduced-motion 已启用，动画已降级');
 }
+
+// Diagnostics are opt-in and absent from normal play.
+if (new URLSearchParams(location.search).get('perf') === '1') {
+  Promise.all([import('./frame-meter.js'), import('./interaction.js')]).then(([meter,game]) => {
+    meter.installFrameMeter(game.isDragging);
+  });
+}

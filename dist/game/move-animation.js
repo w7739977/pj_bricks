@@ -1,158 +1,175 @@
 const EASING = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
 
 export function createMoveAnimator({
-  getCell,
-  getPitch,
-  requestFrame = (callback) => requestAnimationFrame(callback),
-  cancelFrame = (id) => cancelAnimationFrame(id),
+  getCell, getPitch, getBoard,
+  createElement = tag => document.createElement(tag),
+  requestFrame = callback => requestAnimationFrame(callback),
+  cancelFrame = id => cancelAnimationFrame(id),
   setTimer = (callback, delay) => setTimeout(callback, delay),
-  clearTimer = (id) => clearTimeout(id),
+  clearTimer = id => clearTimeout(id),
 }) {
   const active = new Map();
-  let following = new Set();
-  let lastFollowSig = '';
-
-  // 拖拽跟随的位移施加在棋子 svg 上而非格子本体：格子留在原位，
-  // 轨迹亮线（格子的 ::before）才能钉在真实格位；svg 需有定位
-  // （styles.css 中 .cell .veg { position: relative }）z-index 才生效
-  function pieceOf(el) {
-    return el.querySelector?.('.tile-piece') || el.querySelector?.('.veg') || el;
-  }
-
+  let following = new Map();
+  let followPositions = null;
+  let followUsesLayer = true;
+  let followLayer = null;
+  let lastX = NaN, lastY = NaN;
+  const pieceOf = el => el.querySelector?.('.tile-piece') || el.querySelector?.('.veg') || el;
   function clearStyles(target) {
     target.style.transition = '';
     target.style.transform = '';
-    // 归还拖拽期间申请的合成层与顶层绘制位置
     target.style.willChange = '';
     target.style.zIndex = '';
   }
-
   function cancelActive(el) {
-    const previous = active.get(el);
-    if (!previous) return;
-    if (previous.frameId !== null) cancelFrame(previous.frameId);
-    if (previous.timerId !== null) clearTimer(previous.timerId);
+    const old = active.get(el);
+    if (!old) return;
+    if (old.frameId !== null) cancelFrame(old.frameId);
+    if (old.timerId !== null) clearTimer(old.timerId);
     active.delete(el);
   }
-
   function clearCell(el) {
     cancelActive(el);
-    // 同时清格子与棋子两层：cancelAll 可能打断动画中/拖拽中的元素
     clearStyles(el);
     clearStyles(pieceOf(el));
+    el.classList?.remove('drag-source');
   }
-
   function releaseFollowing() {
-    lastFollowSig = '';
-    const cells = following;
-    following = new Set();
-    for (const el of cells) clearCell(el);
+    followPositions = null;
+    lastX = lastY = NaN;
+    if (followLayer) {
+      cancelActive(followLayer);
+      followLayer.remove();
+      followLayer = null;
+    }
+    for (const [el,piece] of following) {
+      clearCell(el);
+      clearStyles(piece);
+    }
+    following = new Map();
   }
-
   function transitionToRest(el, duration, onComplete, target = el) {
     const token = Symbol('move-animation');
-    const record = { token, frameId: null, timerId: null };
-    active.set(el, record);
+    const record = {token, frameId:null, timerId:null};
+    active.set(el,record);
     record.frameId = requestFrame(() => {
       if (active.get(el)?.token !== token) return;
       target.style.transition = `transform ${duration}ms ${EASING}`;
       target.style.transform = '';
       record.timerId = setTimer(() => {
         if (active.get(el)?.token !== token) return;
-        target.style.transition = '';
-        target.style.transform = '';
-        target.style.willChange = '';
-        target.style.zIndex = '';
+        clearStyles(target);
         active.delete(el);
         onComplete();
-      }, duration + 30);
+      },duration+30);
     });
   }
-
-  function follow(positions, offsetX, offsetY) {
-    const sig = `${positions.map(p => `${p.r},${p.c}`).join(';')}|${offsetX}|${offsetY}`;
-    if (sig === lastFollowSig) return;
-    const next = new Set();
-    for (const position of positions) {
-      const el = getCell(position.r, position.c);
-      if (el) next.add(el);
+  function prepareFollow(positions, useLayer) {
+    releaseFollowing();
+    followPositions = positions;
+    followUsesLayer = useLayer;
+    for (const p of positions) {
+      const el = getCell(p.r,p.c);
+      if (el) {
+        clearCell(el);
+        following.set(el,pieceOf(el));
+      }
     }
-
-    for (const el of following) {
-      if (!next.has(el)) clearCell(el);
+    const board = getBoard?.();
+    const canLayer = useLayer && board && following.size > 0 && [...following].every(([el,piece]) =>
+      el.getBoundingClientRect && el.classList && piece.cloneNode);
+    if (canLayer) {
+      // Geometry is read only at gesture start/commit, never during pointer following.
+      const origin = board.getBoundingClientRect();
+      const entries = [...following].map(([el,piece]) => ({el,piece,rect:el.getBoundingClientRect()}));
+      const left = Math.min(...entries.map(p=>p.rect.left));
+      const top = Math.min(...entries.map(p=>p.rect.top));
+      const right = Math.max(...entries.map(p=>p.rect.right));
+      const bottom = Math.max(...entries.map(p=>p.rect.bottom));
+      const layer = createElement('div');
+      layer.className = 'drag-layer';
+      layer.setAttribute('aria-hidden','true');
+      Object.assign(layer.style,{
+        left:`${left-origin.left-(board.clientLeft||0)}px`,
+        top:`${top-origin.top-(board.clientTop||0)}px`,
+        width:`${right-left}px`, height:`${bottom-top}px`,
+        transition:'none',willChange:'transform',
+      });
+      for (const {el,piece,rect} of entries) {
+        const slot = createElement('span');
+        slot.className = 'drag-piece-slot';
+        Object.assign(slot.style,{left:`${rect.left-left}px`,top:`${rect.top-top}px`,width:`${rect.width}px`,height:`${rect.height}px`});
+        const clone = piece.cloneNode(true);
+        clone.removeAttribute('style');
+        slot.appendChild(clone);
+        layer.appendChild(slot);
+        el.classList.add('drag-source');
+      }
+      board.appendChild(layer);
+      followLayer = layer;
+    } else {
+      // DOM-free/fallback path; targets and non-transform styles still cache per gesture.
+      for (const piece of following.values()) {
+        piece.style.transition = 'none';
+        piece.style.willChange = 'transform';
+        piece.style.zIndex = '10';
+      }
     }
-    lastFollowSig = sig;
-
-    for (const el of next) {
-      cancelActive(el);
-      // will-change/z-index 提到棋子 svg 上：棋子浮在其它格子的
-      // 亮线之上（符合"棋子不增强、空格增强"），且避免拖拽中
-      // 反复光栅化大阴影图层
-      const piece = pieceOf(el);
-      // transition 只需在首次加入时压掉 CSS 过渡
-      // syncDOM may replace the SVG while retaining its cell element.
-      piece.style.transition = 'none';
-      piece.style.willChange = 'transform';
-      piece.style.zIndex = '10';
-      piece.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
-    }
-    following = next;
   }
-
-  function settleFollow(duration, onComplete = () => {}) {
-    lastFollowSig = '';
-    const cells = [...following];
-    following = new Set();
-    if (duration === 0 || cells.length === 0) {
-      cells.forEach(clearCell);
-      onComplete();
+  function follow(positions,offsetX,offsetY,{useLayer=true}={}) {
+    if (positions !== followPositions || useLayer !== followUsesLayer) prepareFollow(positions,useLayer);
+    if (offsetX === lastX && offsetY === lastY) return;
+    lastX = offsetX; lastY = offsetY;
+    const transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
+    if (followLayer) followLayer.style.transform = transform;
+    else for (const piece of following.values()) piece.style.transform = transform;
+  }
+  function settleFollow(duration,onComplete=()=>{}) {
+    followPositions = null;
+    lastX = lastY = NaN;
+    if (duration === 0 || following.size === 0) {
+      releaseFollowing();onComplete();return;
+    }
+    if (followLayer) {
+      const layer = followLayer;
+      cancelActive(layer);
+      void layer.offsetWidth;
+      transitionToRest(layer,duration,()=>{
+        if (followLayer === layer) releaseFollowing();
+        onComplete();
+      });
       return;
     }
-
+    const cells = [...following];
+    following = new Map();
     let remaining = cells.length;
-    const completeCell = () => {
-      remaining--;
-      if (remaining === 0) onComplete();
-    };
-    for (const el of cells) {
+    const complete = () => {if (--remaining === 0) onComplete();};
+    for (const [el,piece] of cells) {
       cancelActive(el);
       void el.offsetWidth;
-      // 回弹作用在棋子 svg 上（与 follow 的位移目标一致）
-      transitionToRest(el, duration, completeCell, pieceOf(el));
+      transitionToRest(el,duration,complete,piece);
     }
   }
-
-  function animate(moves, duration, { offsetX = 0, offsetY = 0 } = {}) {
-    if (moves.length === 0) {
-      settleFollow(duration);
-      return;
-    }
+  function animate(moves,duration,{offsetX=0,offsetY=0}={}) {
+    if (moves.length === 0) {settleFollow(duration);return;}
     releaseFollowing();
     for (const move of moves) {
-      const el = getCell(move.toR, move.toC);
+      const el = getCell(move.toR,move.toC);
       if (!el) continue;
-
       cancelActive(el);
-      if (duration === 0) {
-        clearCell(el);
-        continue;
-      }
-
+      if (duration === 0) {clearCell(el);continue;}
       const pitch = getPitch();
-      const dx = (move.fromC - move.toC) * pitch + offsetX;
-      const dy = (move.fromR - move.toR) * pitch + offsetY;
+      const dx = (move.fromC-move.toC)*pitch+offsetX;
+      const dy = (move.fromR-move.toR)*pitch+offsetY;
       el.style.transition = 'none';
       el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
       void el.offsetWidth;
-      transitionToRest(el, duration, () => {});
+      transitionToRest(el,duration,()=>{});
     }
   }
-
   function cancelAll() {
-    lastFollowSig = '';
     releaseFollowing();
     for (const el of [...active.keys()]) clearCell(el);
   }
-
-  return { animate, cancelAll, follow, settleFollow };
+  return {animate,cancelAll,follow,settleFollow,releaseFollow:releaseFollowing};
 }
