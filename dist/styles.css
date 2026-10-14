@@ -33,6 +33,13 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Game HUD, buttons and dialogs are controls, never selectable text. */
+body, body * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 html, body {
   /* 页面级：消灭双击缩放判定，同时不阻碍滚动 */
   touch-action: manipulation;

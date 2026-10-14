@@ -1,7 +1,9 @@
 import { initGame } from './interaction.js';
 import { installViewportLayout } from './viewport-layout.js';
+import { installGameTextGuard } from './ui-gestures.js';
 
 installViewportLayout();
+installGameTextGuard(document.body);
 
 // 等待 DOM 就绪
 if (document.readyState === 'loading') {
