@@ -786,3 +786,10 @@ body { background: var(--color-grass); color: var(--color-fg); }
   .compact-browser .controls .tool { min-height: 44px; flex-direction: row; gap: 6px; padding: 4px 8px; }
   .compact-browser .controls .tool svg { width: 25px; height: 25px; }
 }
+
+/* Keep first/last columns away from native edge navigation on touch phones. */
+@media (pointer: coarse) and (max-width: 600px) and (orientation: portrait) {
+  :root { --pitch: min(48px, calc((100vw - 46px) / 10)); }
+  body { padding-left: 16px; padding-right: 16px; }
+  html, body { overscroll-behavior-x: none; }
+}

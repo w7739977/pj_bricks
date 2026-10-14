@@ -5,6 +5,7 @@ import {
   cloneBoard, restoreBoard, hasLineEmptyCell,
 } from './board.js';
 import { ICON_LABELS, ICON_NAMES, ICONS } from './svg-icons.js';
+import { installEdgeGestureGuard } from './edge-gesture.js';
 import { createBrowserDialogManager } from './dialogs.js';
 import { createLevelSession } from './level-session.js';
 import { createRandomSeed, createSeededRng, getLevelConfig } from './levels.js';
@@ -1026,11 +1027,22 @@ export function initGame() {
   });
 
   const be = boardEl();
+  installEdgeGestureGuard(be, {
+    canStart: target => !state.busy && state.phase === 'playing' && Boolean(cellFromTarget(target)),
+  });
   be.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove, { passive: true });
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerCancel);
   be.addEventListener('lostpointercapture', onPointerCancel);
+  // Native tab navigation can interrupt a gesture without a final pointerup.
+  const cancelInterruptedDrag = () => {
+    if (state.drag) onPointerCancel({ pointerId: state.drag.pointerId });
+  };
+  window.addEventListener('blur', cancelInterruptedDrag);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelInterruptedDrag();
+  });
 
   suppressBrowserGestures(be);
 }

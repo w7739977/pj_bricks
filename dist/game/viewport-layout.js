@@ -6,7 +6,8 @@ export function installViewportLayout() {
     pending = false;
     const height = window.visualViewport?.height ?? window.innerHeight;
     const width = root.clientWidth;
-    const pitch = Math.min(48, (width - 22) / 10);
+    const edgeGutter = width <= 600 && height > width && window.matchMedia?.('(pointer: coarse)').matches ? 16 : 4;
+    const pitch = Math.min(48, (width - edgeGutter * 2 - 14) / 10);
     root.style.setProperty('--play-height', `${height}px`);
     root.classList.toggle('compact-browser', width <= 600 && height > width && height < pitch * 14 + 240);
   }
