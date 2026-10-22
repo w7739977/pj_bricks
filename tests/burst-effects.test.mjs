@@ -69,6 +69,7 @@ test('match feedback begins synchronously and ends on the final CSS animation ev
     for(const cell of fixture.cells){
       assert.ok(cell.classList.values.has('pop'));
       assert.equal(cell.children.length,1);
+      assert.equal(cell.children[0].children.length,8, 'bounded sparkle count without cloning character fragments');
     }
     assert.equal(scheduled.length,1);
     assert.ok(scheduled[0].delay > 440, 'only a completion fallback is scheduled');

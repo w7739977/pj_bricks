@@ -1,0 +1,307 @@
+{
+  "source": "garden-pixel-v2-atlas.png",
+  "sourceSha256": "1c6ddb657aff28f9413f16aa4ba19559864dfe6cc61b88405bf85cb279e2a5d7",
+  "exportRule": "connected alpha component plus three-pixel anti-aliased fringe; foreign components transparent",
+  "sprites": [
+    {
+      "name": "broccoli",
+      "file": "broccoli.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 13,
+        "y": 20,
+        "width": 282,
+        "height": 275
+      },
+      "keptSourcePixels": 51728,
+      "excludedForeignPixels": 4332,
+      "sha256": "88aa5b296002ecd30c9c3c6e89432a8e16cbba1f6c21c9e666d687223a15c39c"
+    },
+    {
+      "name": "lettuce",
+      "file": "lettuce.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 304,
+        "y": 47,
+        "width": 281,
+        "height": 249
+      },
+      "keptSourcePixels": 49993,
+      "excludedForeignPixels": 3894,
+      "sha256": "60d26f17f6cd9b1e4289f6363a02310544eefeba56159c4ca0ca72efb4561a5b"
+    },
+    {
+      "name": "tomato",
+      "file": "tomato.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 593,
+        "y": 64,
+        "width": 244,
+        "height": 232
+      },
+      "keptSourcePixels": 41881,
+      "excludedForeignPixels": 3695,
+      "sha256": "9e8843a2e49ddd850b9a4a85c5473db2a7f53fd2284704e86109baf2a4e59e08"
+    },
+    {
+      "name": "carrot",
+      "file": "carrot.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 874,
+        "y": 8,
+        "width": 214,
+        "height": 293
+      },
+      "keptSourcePixels": 40531,
+      "excludedForeignPixels": 5718,
+      "sha256": "134ba244f178f6175ea224bed6797fb6d78a997b91a80db263a4b5a264649eef"
+    },
+    {
+      "name": "corn",
+      "file": "corn.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 1144,
+        "y": 21,
+        "width": 242,
+        "height": 279
+      },
+      "keptSourcePixels": 41590,
+      "excludedForeignPixels": 4874,
+      "sha256": "720796c51e1fb2d8964e274f612acae68c91693cead776b2b7a62ce4fadd1b55"
+    },
+    {
+      "name": "eggplant",
+      "file": "eggplant.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 22,
+        "y": 294,
+        "width": 237,
+        "height": 274
+      },
+      "keptSourcePixels": 39357,
+      "excludedForeignPixels": 4199,
+      "sha256": "a4b9a54a9b42b1b2b097567ba26619840a20377b40adcc239d5a23f4604a9d81"
+    },
+    {
+      "name": "onion",
+      "file": "onion.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 319,
+        "y": 318,
+        "width": 230,
+        "height": 250
+      },
+      "keptSourcePixels": 38357,
+      "excludedForeignPixels": 3577,
+      "sha256": "9de2c9faec94283bd93a146c2c6680c501b9a8e9f822ba3a963985a587222458"
+    },
+    {
+      "name": "potato",
+      "file": "potato.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 585,
+        "y": 330,
+        "width": 252,
+        "height": 238
+      },
+      "keptSourcePixels": 40735,
+      "excludedForeignPixels": 2976,
+      "sha256": "b28d88d4bf070483bb2cbe5891df02397b6acc51bc8d203480ed33c210121572"
+    },
+    {
+      "name": "cucumber",
+      "file": "cucumber.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 885,
+        "y": 301,
+        "width": 212,
+        "height": 267
+      },
+      "keptSourcePixels": 36499,
+      "excludedForeignPixels": 4783,
+      "sha256": "e268d60b23b4ee6214b7c13acf3840fdd07ba7f3a4a054d11c148040d047eba2"
+    },
+    {
+      "name": "pepper",
+      "file": "pepper.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 1143,
+        "y": 312,
+        "width": 236,
+        "height": 254
+      },
+      "keptSourcePixels": 42036,
+      "excludedForeignPixels": 3627,
+      "sha256": "3cad62c2d315dbf30d97218de799079fcfc00066c1a7c4d7f569fda6eb52c7ff"
+    },
+    {
+      "name": "pumpkin",
+      "file": "pumpkin.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 14,
+        "y": 575,
+        "width": 284,
+        "height": 253
+      },
+      "keptSourcePixels": 51840,
+      "excludedForeignPixels": 3822,
+      "sha256": "abb0e37a48c6d88342bf3f0a3032b22f6c64c70fa79cf2485ae63515042b3d18"
+    },
+    {
+      "name": "grape",
+      "file": "grape.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 325,
+        "y": 575,
+        "width": 242,
+        "height": 257
+      },
+      "keptSourcePixels": 42034,
+      "excludedForeignPixels": 4289,
+      "sha256": "6e1993e4169e695d421c67c85df4192254d0e80c2af5c31e492f5037be067cad"
+    },
+    {
+      "name": "apple",
+      "file": "apple.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 583,
+        "y": 575,
+        "width": 241,
+        "height": 257
+      },
+      "keptSourcePixels": 46328,
+      "excludedForeignPixels": 3824,
+      "sha256": "1dd223a13f4d76f91fed195c3a37b99b659cf7f6d7d57031d07302f68e244acd"
+    },
+    {
+      "name": "strawberry",
+      "file": "strawberry.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 880,
+        "y": 586,
+        "width": 228,
+        "height": 247
+      },
+      "keptSourcePixels": 39564,
+      "excludedForeignPixels": 4136,
+      "sha256": "70126206dc6d19233bcd347bb59e668cc19d4833ebe5e5cf8ee168fea1acb897"
+    },
+    {
+      "name": "banana",
+      "file": "banana.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 1143,
+        "y": 567,
+        "width": 243,
+        "height": 265
+      },
+      "keptSourcePixels": 39425,
+      "excludedForeignPixels": 6649,
+      "sha256": "7af6224e0b5e43c2e34b06c4a2b3a98fbc34b7e2d82021bf0cda3d2737d7de94"
+    },
+    {
+      "name": "orange",
+      "file": "orange.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 31,
+        "y": 842,
+        "width": 248,
+        "height": 251
+      },
+      "keptSourcePixels": 44081,
+      "excludedForeignPixels": 4676,
+      "sha256": "f0220c02f20021aac9afd6cbd94ed822eb0f9f51a9cef9850dbcb03ab69229b1"
+    },
+    {
+      "name": "pear",
+      "file": "pear.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 318,
+        "y": 825,
+        "width": 217,
+        "height": 269
+      },
+      "keptSourcePixels": 39594,
+      "excludedForeignPixels": 4764,
+      "sha256": "d3b492b64b99342aa5848fdb6e989bbf9206d9ffa14d60e6269207e50352e851"
+    },
+    {
+      "name": "cherry",
+      "file": "cherry.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 563,
+        "y": 834,
+        "width": 277,
+        "height": 260
+      },
+      "keptSourcePixels": 41928,
+      "excludedForeignPixels": 6438,
+      "sha256": "0d49c6b40b7fcef4fab430b0075840af606510b0bcd2ec6be4941f268ff585d8"
+    },
+    {
+      "name": "peach",
+      "file": "peach.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 857,
+        "y": 850,
+        "width": 244,
+        "height": 244
+      },
+      "keptSourcePixels": 44997,
+      "excludedForeignPixels": 3778,
+      "sha256": "ddb9f138508ab79454f59b694f5d7e5b67f2d7ab2fcd95df29c2216cd82fb7a1"
+    },
+    {
+      "name": "watermelon",
+      "file": "watermelon.png",
+      "width": 160,
+      "height": 160,
+      "sourceBounds": {
+        "x": 1147,
+        "y": 850,
+        "width": 240,
+        "height": 244
+      },
+      "keptSourcePixels": 37104,
+      "excludedForeignPixels": 3722,
+      "sha256": "423a348912d239d88211374d9aeccc35884641337fdcfbe441e5122c00c1f92d"
+    }
+  ]
+}

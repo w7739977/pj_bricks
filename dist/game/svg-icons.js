@@ -27,7 +27,7 @@ export const ICON_LABELS = Object.freeze({
 
 
 export const SPRITE_URLS = Object.freeze(Object.fromEntries(
-  ICON_NAMES.map(name => [name, `/assets/sprites/${name}.png`])
+  ICON_NAMES.map(name => [name, `/assets/sprites-expressive-v4/${name}.png`])
 ));
 export const ICONS = Object.fromEntries(ICON_NAMES.map(name => [name,
   `<svg class="veg" data-name="${name}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none"><image href="${SPRITE_URLS[name]}" x="0" y="0" width="64" height="64"/></svg>`

@@ -800,3 +800,39 @@ body { background: var(--color-grass); color: var(--color-fg); }
   body { padding-left: 16px; padding-right: 16px; }
   html, body { overscroll-behavior-x: none; }
 }
+
+/* Sprite garden v2: rendering feedback never changes grid/collision geometry. */
+body { background: radial-gradient(ellipse at 50% 15%, #77bda0, #418e76 78%); }
+.topbar { grid-template-columns: 36px minmax(0,1fr) auto auto; gap: 5px; }
+.sound-toggle { border: 1px solid #526459; border-radius: 7px; background: #e3efcf; color: #304535; padding: 6px 5px; font: 700 10px system-ui; min-height: 30px; }
+.sound-toggle[aria-pressed="false"] { background: #e6e5dc; }
+.board { background: #526b52; border-color: #b59c70; box-shadow: 0 4px 0 #60533e, 0 8px 14px #234b4540; }
+.tile-piece { background: #e9edcf; border-color: #67775a; box-shadow: inset 0 1px 0 #fffbe8, inset 0 -2px 0 #c1cc9d; }
+.cell .veg, .drag-layer .veg { width: 94%; height: 94%; image-rendering: auto; transform-origin: 50% 85%; filter: drop-shadow(0 2px 0 #31453033); }
+.cell.pressed .veg, .drag-layer .veg { transform: translateY(-1px) scale(1.06); }
+.cell.pressed { z-index: 20; }
+.cell.pressed .tile-piece, .drag-layer .tile-piece { background: #fff4ca; box-shadow: inset 0 1px 0 #fffde8, inset 0 -2px 0 #cfbb7b, 0 4px 5px #173f4240; }
+.cell.match-preview .tile-piece { background: #fff1b2; border-color: #bd8729; box-shadow: inset 0 0 0 1px #fffbd2, 0 0 0 2px #ffdc65; }
+.board.match-ready .drag-layer .tile-piece { border-color: #bd8729; background: #fff1b2; }
+.board.drag-blocked[data-drag-axis="row"] .drag-layer .veg { transform: scale(.94,1.07); }
+.board.drag-blocked[data-drag-axis="col"] .drag-layer .veg { transform: scale(1.07,.94); }
+.board.drag-blocked .cell.pressed .veg { transform: scale(.96,1.04); }
+.cell:not(.empty):nth-child(7n+1) .veg { animation: garden-breathe 4.6s steps(3,end) var(--idle-delay,0s) infinite; }
+.board.gesture-active .veg, .cell.pop .veg, .cell.shake .veg { animation: none; }
+.cell.pop .veg { transform: translateY(-2px) scale(1.08); }
+@keyframes garden-breathe { 0%,72%,100% { translate: 0 0; } 80%,92% { translate: 0 -1px; } }
+/* Short, localized sparkles replace flying fragments of the character. */
+.burst-shard { display: none; }
+.burst-spark { width: 4px; height: 4px; left: calc(50% - 2px); top: calc(50% - 2px); }
+.cell.pop::after { border-width: 2px; }
+@keyframes tile-explode {
+  0% { scale: 1; opacity: 1; }
+  28% { scale: 1.1; opacity: 1; }
+  65% { scale: .8; opacity: .65; }
+  100% { scale: .35; opacity: 0; }
+}
+@media (max-width: 380px) { .title { font-size: 17px; letter-spacing: 0; } .meta { min-width: 55px; font-size: 11px; } }
+@media (prefers-reduced-motion: reduce) {
+  .cell .veg, .drag-layer .veg { animation: none !important; transform: none !important; translate: none !important; }
+  .cell.pop .tile-piece, .cell.pop::after { animation: none; }
+}

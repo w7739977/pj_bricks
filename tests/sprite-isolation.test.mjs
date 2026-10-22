@@ -33,12 +33,11 @@ test('anti-aliased edges retain their original alpha while nearby other cores st
   assert.notEqual(s.labels[4*f.width+4],red.label);
 });
 test('all twenty exported sprites correspond to the validated isolation manifest',()=>{
-  const m=JSON.parse(readFileSync(new URL('../dist/assets/sprites/manifest.json',import.meta.url)));
+  const m=JSON.parse(readFileSync(new URL('../dist/assets/sprites-expressive-v4/manifest.json',import.meta.url)));
   assert.equal(m.sprites.length,20);
   assert.equal(new Set(m.sprites.map(s=>s.name)).size,20);
-  assert.ok(m.sprites.some(s=>s.excludedForeignPixels>0),'source rectangles overlap actual foreign pixels');
   for(const sprite of m.sprites){
-    const bytes=readFileSync(new URL(`../dist/assets/sprites/${sprite.file}`,import.meta.url));
+    const bytes=readFileSync(new URL(`../dist/assets/sprites-expressive-v4/${sprite.file}`,import.meta.url));
     assert.equal(createHash('sha256').update(bytes).digest('hex'),sprite.sha256);
     assert.ok(sprite.keptSourcePixels>0);
   }

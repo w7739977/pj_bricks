@@ -5,6 +5,7 @@ import {
   cloneBoard, restoreBoard, hasLineEmptyCell,
 } from './board.js';
 import { ICON_LABELS, ICON_NAMES, ICONS } from './svg-icons.js';
+import { createGameAudio } from './game-audio.js';
 import { installEdgeGestureGuard } from './edge-gesture.js';
 import { createBrowserDialogManager } from './dialogs.js';
 import { createLevelSession } from './level-session.js';
@@ -43,7 +44,11 @@ const state = {
 };
 
 const DRAG_THRESHOLD = 10;
-const SNAP_DURATION = 90;
+const SNAP_DURATION = 120;
+const audio = createGameAudio();
+let previewCells = new Set();
+let lastMatchAt = -Infinity;
+let combo = 0;
 
 function motionDuration(duration) {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : duration;
@@ -99,6 +104,9 @@ function clearHintHighlight() {
 }
 
 function clearLevelAsync() {
+  clearDragFeedback();
+  combo = 0;
+  lastMatchAt = -Infinity;
   state.effectCleanup?.();
   state.effectCleanup = null;
   dragFrames.cancel();
@@ -328,6 +336,7 @@ function renderBoard() {
       cell.className = 'cell';
       cell.dataset.r = r;
       cell.dataset.c = c;
+      cell.style.setProperty('--idle-delay', `${-((r * 7 + c * 3) % 23) / 5}s`);
       const v = state.board[r][c];
       if (v === null) {
         cell.classList.add('empty');
@@ -452,7 +461,11 @@ function eliminate(a, b) {
     setBusy(false);
     afterEliminate();
   };
-  const duration = motionDuration(440);
+  const now = performance.now();
+  combo = now - lastMatchAt < 2300 ? Math.min(combo + 1, 5) : 1;
+  lastMatchAt = now;
+  audio.match(combo);
+  const duration = motionDuration(240);
   const cleanup = playMatchFeedback({
     cells: cells.map(p => p.el), duration,
     // Use measured tile size; grid gaps can change with the phone layout.
@@ -732,9 +745,45 @@ function onPointerDown(e) {
     blockedDirection: 0,
     blockedHintAt: 0,
   };
+  audio.wake();
+  audio.pick();
+  cell.el.classList.add('pressed');
+  boardEl().classList.add('gesture-active');
   boardEl().setPointerCapture(e.pointerId);
   updateDragTrace();
   updateLevelControls();
+}
+
+// Presentation only: previews never write to the board or collision geometry.
+function clearDragPreview() {
+  for (const el of previewCells) el.classList.remove('match-preview');
+  previewCells.clear();
+}
+function refreshDragPreview() {
+  clearDragPreview();
+  const d = state.drag;
+  if (!d?.moved) return;
+  for (const p of findTargets(state.board, d.curR, d.curC)) {
+    const el = state.cellEls[p.r][p.c];
+    // Logical destinations can still contain an original moving source in DOM.
+    if (!draggingCells.has(el)) {
+      el.classList.add('match-preview');
+      previewCells.add(el);
+    }
+  }
+  boardEl().classList.toggle('match-ready', previewCells.size > 0);
+}
+function setDragBlocked(blocked) {
+  const be = boardEl();
+  if (blocked && !be.classList.contains('drag-blocked')) audio.block();
+  be.classList.toggle('drag-blocked', blocked);
+}
+function clearDragFeedback() {
+  clearDragPreview();
+  const be = boardEl();
+  be?.classList.remove('gesture-active', 'drag-blocked', 'match-ready');
+  if (be) delete be.dataset.dragAxis;
+  for (const row of state.cellEls) for (const el of row) el.classList.remove('pressed');
 }
 
 // ---- 拖拽轨迹线：行列均增强，辅助确认匹配轨迹 ----
@@ -772,6 +821,7 @@ function updateDragTrace() {
 }
 
 function hideDragTrace() {
+  clearDragFeedback();
   for (const el of traceCells) el.classList.remove('trace');
   for (const el of vacatedCells) el.classList.remove('vacated');
   for (const el of draggingCells) el.classList.remove('dragging');
@@ -798,6 +848,7 @@ function handleDragMove(x, y) {
     if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
       state.drag.axis = Math.abs(dx) > Math.abs(dy) ? 'row' : 'col';
       state.drag.dragged = true;
+      boardEl().dataset.dragAxis = state.drag.axis;
       cancelSelection();
       if (state.pendingRevert) rollbackPending();
       state.drag.snapshot = cloneBoard(state.board);
@@ -839,6 +890,7 @@ function handleDragMove(x, y) {
   const rawDistance = state.drag.axis === 'row' ? dx : dy;
   const distance = Math.max(state.drag.bounds.min, Math.min(state.drag.bounds.max, rawDistance));
   if (state.drag.locked) {
+    setDragBlocked(true);
     state.drag.visualOffset = { x: 0, y: 0 };
     return;
   }
@@ -865,6 +917,7 @@ function handleDragMove(x, y) {
     state.drag.moved = true;
     state.drag.appliedTotal += result.applied;
     updateDragTrace(); // 轨迹线跟随棋子所在行/列移动
+    refreshDragPreview();
     // 拖拽期间不调用 syncDOM：内容固定在原始格，仅靠 transform 位移，
     // 避免跨格时重建 innerHTML 造成的掉帧；模型照常更新，落子时一次性同步
   }
@@ -880,6 +933,7 @@ function handleDragMove(x, y) {
     : { x: 0, y: state.drag.appliedTotal * state.pitch + residual.y };
   moveAnimator.follow(state.drag.chainCells, totalOffset.x, totalOffset.y);
 
+  setDragBlocked(result.constrained || Math.abs(rawDistance - distance) > .5);
   if (result.constrained) {
     const now = Date.now();
     if (now - state.drag.blockedHintAt > 200) {
@@ -913,6 +967,7 @@ function onPointerUp(e) {
     return;
   }
 
+  audio.drop();
   const snapDuration = motionDuration(SNAP_DURATION);
   if (!info.moved) {
     if (snapDuration > 0) setBusy(true);
@@ -1026,6 +1081,7 @@ export function initGame() {
     if (!state.busy && state.phase === 'playing') retryCurrentLevel();
   });
 
+  audio.installToggle(document.getElementById('soundBtn'), state.storage);
   const be = boardEl();
   installEdgeGestureGuard(be, {
     canStart: target => !state.busy && state.phase === 'playing' && Boolean(cellFromTarget(target)),
@@ -1038,6 +1094,7 @@ export function initGame() {
   // Native tab navigation can interrupt a gesture without a final pointerup.
   const cancelInterruptedDrag = () => {
     if (state.drag) onPointerCancel({ pointerId: state.drag.pointerId });
+    audio.suspend();
   };
   window.addEventListener('blur', cancelInterruptedDrag);
   document.addEventListener('visibilitychange', () => {

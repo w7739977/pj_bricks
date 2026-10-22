@@ -7,7 +7,7 @@ export function burstVectors(size, count = 12) {
   });
 }
 
-export function createMatchBurst(cell, duration, knownSize) {
+export function createMatchBurst(cell, duration, knownSize, { fragments = true, sparks = 12 } = {}) {
   const surface = cell.querySelector('.tile-piece');
   if (!surface || duration === 0) return;
   const size = knownSize ?? cell.getBoundingClientRect().width;
@@ -16,7 +16,7 @@ export function createMatchBurst(cell, duration, knownSize) {
   burst.setAttribute('aria-hidden', 'true');
   burst.style.setProperty('--burst-duration', `${duration}ms`);
   const directions = [[-1,-1], [1,-1], [-1,1], [1,1]];
-  directions.forEach(([x, y], i) => {
+  if (fragments) directions.forEach(([x, y], i) => {
     const shard = document.createElement('span');
     shard.className = `burst-shard burst-shard--${i}`;
     shard.style.setProperty('--tx', `${x * size * .65}px`);
@@ -28,7 +28,7 @@ export function createMatchBurst(cell, duration, knownSize) {
     shard.appendChild(fragment);
     burst.appendChild(shard);
   });
-  burstVectors(size).forEach(({ x, y }, i) => {
+  burstVectors(size, sparks).forEach(({ x, y }, i) => {
     const spark = document.createElement('i');
     spark.className = `burst-spark burst-spark--${i % 3}`;
     spark.style.setProperty('--tx', `${x}px`);
@@ -69,7 +69,7 @@ export function playMatchFeedback({ cells, duration, size, schedule, onFinish })
       listeners.push({ surface, listener });
     }
     cell.style.setProperty('--pop-duration', `${duration}ms`);
-    createMatchBurst(cell, duration, size);
+    createMatchBurst(cell, duration, size, { fragments: false, sparks: 8 });
     cell.classList.add('matched', 'pop');
   }
   // Hidden/background tabs and cancelled CSS animations still release controller state.
