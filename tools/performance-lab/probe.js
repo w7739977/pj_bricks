@@ -40,7 +40,7 @@ function frame(t){
 requestAnimationFrame(frame);
 window.addEventListener('pointerdown',e=>{
   const cell=e.target.closest?.('#board .cell:not(.empty)');
-  if(!cell||document.querySelector('#hintBtn')?.disabled)return;
+  if(!cell||document.querySelector('dialog[open]'))return;
   active={id:++seq,pointerId:e.pointerId,type:e.pointerType,trusted:e.isTrusted,start:performance.now(),variant:document.documentElement.classList.contains('lab-lite')?'lite':'original',cell:{r:+cell.dataset.r,c:+cell.dataset.c},before:cells(),frames:[],inputToRAF:[],dispatchLag:[],moves:0,startXY:[e.clientX,e.clientY],maxDistance:0,baseline:stats(baseline)};
   active.processing=[];active.syntheticMoves=0;active.trustedMoves=0;active.toolGuard=toolGuard;active.ignoredNative=[];
   active.variant=[...document.documentElement.classList].filter(c=>/^lab-/.test(c)).join('+')||'original';
@@ -101,7 +101,16 @@ panel.querySelector('#lab-save').onclick=async()=>{
   const report={schemaVersion:3,createdAt:new Date().toISOString(),game:'pj_bricks',url:location.href,userAgent:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},supports:{longtask:PerformanceObserver.supportedEntryTypes.includes('longtask'),event:PerformanceObserver.supportedEntryTypes.includes('event')},resources:performance.getEntriesByType('resource').filter(e=>e.name.startsWith(location.origin+'/')).map(e=>({name:e.name,duration:e.duration,transferSize:e.transferSize,startTime:e.startTime})),navigation:performance.getEntriesByType('navigation').map(e=>({domContentLoaded:e.domContentLoadedEventEnd,load:e.loadEventEnd,response:e.responseEnd})),notes:['inputMode 和 syntheticMoves/trustedMoves 标识回放来源。','rAF 和输入至下一帧回调不是 GPU 呈现帧率或完整端到端输入延迟。','少于30帧或10个移动事件的拖动不足以作性能结论；后台标签页样本取消。','longTasks 包含松手后1秒；A/B 特效开关仅作用于测试页。'],spans:window.__labSpans||null,sessions,errors};
   if(!['127.0.0.1','localhost','[::1]'].includes(location.hostname)){
     let output=panel.querySelector('#lab-report');if(!output){output=document.createElement('textarea');output.id='lab-report';output.readOnly=true;output.setAttribute('aria-label','性能报告 JSON');output.style.cssText='width:100%;height:80px';panel.append(output);}
-    output.value=JSON.stringify(report);last.textContent='线上采样报告已生成（仅本页，不上传服务器）';return;
+    const json=JSON.stringify(report);
+    let download=panel.querySelector('#lab-download');
+    if(!download){download=document.createElement('a');download.id='lab-download';download.textContent='下载完整报告';download.style.color='#fff';panel.append(download);}
+    if(download.href.startsWith('blob:'))URL.revokeObjectURL(download.href);
+    download.download=`pj-bricks-performance-${Date.now()}.json`;
+    download.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
+    // Large unbroken JSON in a narrow textarea can freeze layout after hundreds
+    // of actions. Keep the DOM preview small; download retains every raw sample.
+    output.value=json.length<=200000?json:JSON.stringify({schemaVersion:report.schemaVersion,samples:sessions.length,errors:errors.length,note:'完整原始数据请点击下载完整报告'});
+    last.textContent='线上采样报告已生成（仅本页，不上传服务器）';return;
   }
   try {const response=await fetch('/__lab/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(report)});if(!response.ok)throw Error(response.status);last.textContent=`报告已保存：${(await response.json()).saved}`;}catch(e){last.textContent=`保存失败：${e.message}`;}
 };

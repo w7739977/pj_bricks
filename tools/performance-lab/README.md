@@ -29,3 +29,10 @@ Node.js20+，无需安装第三方依赖。在项目根目录运行 `npm run tes
 - iPhone Chrome与桌面Chrome不能互相替代验收；本轮iPhone没有连接远程真机调试。
 
 结果与原因见 `docs/performance/2026-11-08.md`。
+
+
+## 通关与死局模拟
+
+运行 `node tools/performance-lab/playability-audit.mjs`，默认对 9 档关卡各跑 200 局，结果写入 `test-artifacts/playability/audit.json`。可用 `AUDIT_RUNS=20` 缩短每档局数，或传入输出文件路径。独立动作枚举以坐标平移和射线扫描检查生产死局判定，采用直接消除优先的随机策略，不代表真人通关率或浏览器渲染性能。
+
+线上报告提供“下载完整报告”链接；超过 200,000 字符时文本框仅显示摘要，避免大 JSON 的布局开销。零提示关卡也会采样；动画中被游戏忽略的输入可能出现在记录里，仍须按有效拖动门槛筛选。

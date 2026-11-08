@@ -1,0 +1,186 @@
+{
+  "online": {
+    "completedLevels": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "successfulMatches": 490,
+    "reshuffles": {
+      "3": 1,
+      "5": 1
+    },
+    "hintsUsed": 0,
+    "deadlocksConfirmedByIndependentOracle": 2,
+    "loggedSteps": 475,
+    "inputTimingNoOps": 1,
+    "metrics": [
+      {
+        "file": "playthrough-performance-first-five.json",
+        "samples": 351,
+        "drags": 244,
+        "maxReleaseMs": 32.3,
+        "releaseOver50Ms": 0,
+        "longTasks": 0,
+        "errors": []
+      },
+      {
+        "file": "playthrough-performance-level-seven.json",
+        "samples": 70,
+        "drags": 54,
+        "maxReleaseMs": 17.8,
+        "releaseOver50Ms": 0,
+        "longTasks": 0,
+        "errors": []
+      }
+    ]
+  },
+  "simulation": {
+    "runsPerRevision": 1800,
+    "baselineStates": 126307,
+    "fixedStates": 126308,
+    "mismatches": 0,
+    "baseline": [
+      {
+        "level": 1,
+        "wins": 200,
+        "runs": 200,
+        "deadlocks": 20,
+        "failures": 0
+      },
+      {
+        "level": 2,
+        "wins": 200,
+        "runs": 200,
+        "deadlocks": 34,
+        "failures": 0
+      },
+      {
+        "level": 3,
+        "wins": 199,
+        "runs": 200,
+        "deadlocks": 34,
+        "failures": 1
+      },
+      {
+        "level": 4,
+        "wins": 197,
+        "runs": 200,
+        "deadlocks": 29,
+        "failures": 3
+      },
+      {
+        "level": 5,
+        "wins": 192,
+        "runs": 200,
+        "deadlocks": 55,
+        "failures": 8
+      },
+      {
+        "level": 6,
+        "wins": 198,
+        "runs": 200,
+        "deadlocks": 54,
+        "failures": 2
+      },
+      {
+        "level": 7,
+        "wins": 194,
+        "runs": 200,
+        "deadlocks": 57,
+        "failures": 6
+      },
+      {
+        "level": 10,
+        "wins": 190,
+        "runs": 200,
+        "deadlocks": 90,
+        "failures": 10
+      },
+      {
+        "level": 15,
+        "wins": 192,
+        "runs": 200,
+        "deadlocks": 78,
+        "failures": 8
+      }
+    ],
+    "fixed": [
+      {
+        "level": 1,
+        "wins": 200,
+        "runs": 200,
+        "deadlocks": 20,
+        "failures": 0
+      },
+      {
+        "level": 2,
+        "wins": 200,
+        "runs": 200,
+        "deadlocks": 34,
+        "failures": 0
+      },
+      {
+        "level": 3,
+        "wins": 199,
+        "runs": 200,
+        "deadlocks": 34,
+        "failures": 1
+      },
+      {
+        "level": 4,
+        "wins": 197,
+        "runs": 200,
+        "deadlocks": 29,
+        "failures": 3
+      },
+      {
+        "level": 5,
+        "wins": 192,
+        "runs": 200,
+        "deadlocks": 55,
+        "failures": 8
+      },
+      {
+        "level": 6,
+        "wins": 198,
+        "runs": 200,
+        "deadlocks": 54,
+        "failures": 2
+      },
+      {
+        "level": 7,
+        "wins": 194,
+        "runs": 200,
+        "deadlocks": 57,
+        "failures": 6
+      },
+      {
+        "level": 10,
+        "wins": 191,
+        "runs": 200,
+        "deadlocks": 89,
+        "failures": 9
+      },
+      {
+        "level": 15,
+        "wins": 191,
+        "runs": 200,
+        "deadlocks": 78,
+        "failures": 9
+      }
+    ]
+  },
+  "generationBenchmark": {
+    "platform": "darwin",
+    "kind": "Node generation time, not browser rendering",
+    "samples": 1000,
+    "p95Ms": 0.4766249999999843,
+    "maxMs": 1.5989160000000027,
+    "failed": 0
+  }
+}

@@ -94,10 +94,30 @@ export function createBoard({ iconIndices, rng = Math.random, maxAttempts = 1000
     shuffleInPlace(pool, rng);
     const board = poolToBoard(pool);
     if (openingPairs) {
-      if (tuneOpeningPairs(board, openingPairs, rng)) return { ok: true, board };
+      if (tuneOpeningPairs(board, openingPairs, rng) && hasContinuingOpening(board)) {
+        return { ok: true, board };
+      }
     } else if (hasAnySolvablePair(board)) return { ok: true, board };
   }
   return { ok: false, reason: 'no-solvable-pair' };
+}
+
+// Opening density alone can produce a forced loss of a reshuffle: a board with
+// one pair whose removal leaves no legal gesture. Require at least one opening
+// choice with a continuation, while preserving the configured opening budget.
+// This is a one-move fairness check, not a guarantee of a complete solution.
+function hasContinuingOpening(board) {
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (board[r][c] === null) continue;
+    for (const target of findTargets(board, r, c)) {
+      if (target.r * COLS + target.c <= r * COLS + c) continue;
+      const next = cloneBoard(board);
+      next[r][c] = null;
+      next[target.r][target.c] = null;
+      if (hasAnySolvablePairDeep(next)) return true;
+    }
+  }
+  return false;
 }
 
 // ---- 0 折直线连通 ----
