@@ -32,8 +32,15 @@ test('level resource budgets match the approved curve', () => {
   const configs = Array.from({ length: 8 }, (_, i) =>
     getLevelConfig(i + 1, { randomSeed: 123 }),
   );
-  assert.deepEqual(configs.map(({ hints }) => hints), [3, 2, 2, 1, 1, 0, 0, 0]);
-  assert.deepEqual(configs.map(({ reshuffles }) => reshuffles), [2, 2, 1, 1, 1, 1, 1, 1]);
+  assert.deepEqual(configs.map(({ hints }) => hints), [4, 3, 3, 2, 2, 2, 1, 1]);
+  assert.deepEqual(configs.map(({ reshuffles }) => reshuffles), [2, 2, 2, 1, 1, 1, 1, 1]);
+  for (const level of [9,10,15,20,30]) {
+    const config=getLevelConfig(level,{randomSeed:123});
+    assert.equal(config.reshuffles,0);
+    assert.equal(config.rewardedReshuffleLimit,1);
+  }
+  assert.equal(getLevelConfig(10,{randomSeed:123}).hints,1);
+  assert.equal(getLevelConfig(11,{randomSeed:123}).hints,0);
 });
 
 test('new fruit indices unlock only on levels two through seven', () => {
@@ -74,6 +81,8 @@ test('opening choices and assistance decrease as the icon pool grows', () => {
     assert.ok(configs[i].reshuffles <= configs[i-1].reshuffles);
     assert.ok(configs[i].openingPairs.min >= 1);
   }
-  assert.deepEqual(configs[0].openingPairs,{min:12,max:16});
-  assert.deepEqual(configs[14].openingPairs,{min:1,max:1});
+  assert.deepEqual(configs[0].openingPairs,{min:18,max:22});
+  assert.deepEqual(configs[9].openingPairs,{min:3,max:5});
+  assert.deepEqual(configs[14].openingPairs,{min:1,max:2});
+  assert.deepEqual(configs[19].openingPairs,{min:1,max:1});
 });

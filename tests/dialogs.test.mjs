@@ -51,6 +51,7 @@ function fixture() {
       '[data-complete-next]': fakeElement(),
       '[data-deadlock-retry]': fakeElement(),
       '[data-deadlock-reshuffle]': fakeElement(),
+      '[data-deadlock-reward]': fakeElement(),
       '[data-failure-action]': fakeElement(),
     };
     elements.set(id, dialog);
@@ -60,6 +61,7 @@ function fixture() {
     'completeDesc',
     'completeSummary',
     'completeUnlock',
+    'deadlockDesc',
     'failureTitle',
     'failureDesc',
   ]) {
@@ -202,4 +204,31 @@ test('reopen while dialog reports open does not throw and new session works', as
   await Promise.resolve();
   dialog.parts['[data-deadlock-retry]'].dispatch('click');
   assert.equal(await second, 'retry');
+});
+
+test('reward action is hidden without an SDK and replaces exhausted free reshuffles', async()=>{
+  const {elements,manager}=fixture(),dialog=elements.get('deadlockDialog');
+  const normal=manager.showDeadlock();
+  assert.equal(dialog.parts['[data-deadlock-reward]'].hidden,true);
+  manager.closeAll();await normal;
+  const rescue=manager.showDeadlock({canReshuffle:false,canReward:true});
+  assert.equal(dialog.parts['[data-deadlock-reshuffle]'].hidden,true);
+  assert.equal(dialog.parts['[data-deadlock-reward]'].hidden,false);
+  dialog.parts['[data-deadlock-reshuffle]'].dispatch('click');
+  assert.equal(dialog.open,true);
+  dialog.parts['[data-deadlock-reward]'].dispatch('click');
+  assert.equal(await rescue,'reward');
+});
+
+test('queued close from a cancelled ad cannot retry a newly reopened rescue dialog', async()=>{
+  const {elements,manager}=fixture(),dialog=elements.get('deadlockDialog');
+  dialog.close=function(){this.open=false;setTimeout(()=>this.dispatch('close'),0);};
+  const first=manager.showDeadlock({canReshuffle:false,canReward:true});
+  dialog.parts['[data-deadlock-reward]'].dispatch('click');
+  assert.equal(await first,'reward');
+  const second=manager.showDeadlock({canReshuffle:false,canReward:true,message:'广告未完成'});
+  await new Promise(resolve=>setTimeout(resolve,1));
+  assert.equal(dialog.open,true,'stale native close must leave the new dialog open');
+  dialog.parts['[data-deadlock-reward]'].dispatch('click');
+  assert.equal(await second,'reward');
 });

@@ -9,12 +9,13 @@ import {legalMoves} from '../tools/performance-lab/playability-audit.mjs';
 for (const [level,seed] of [[10,12237941],[15,12497573],[15,12616358],[15,12893523]]) {
   test(`level ${level}, seed ${seed}: opening has a legal continuation without reshuffling`, () => {
     const config=getLevelConfig(level,{randomSeed:seed});
-    const options={iconIndices:config.iconIndices,openingPairs:config.openingPairs};
+    // Retain the original one-opening stress case when the product curve changes.
+    const options={iconIndices:config.iconIndices,openingPairs:{min:1,max:1}};
     const result=createBoard({...options,rng:createSeededRng(seed)});
     assert.equal(result.ok,true);
     assert.deepEqual(result,createBoard({...options,rng:createSeededRng(seed)}),'retry stays deterministic');
     const count=countOpeningPairs(result.board);
-    assert.ok(count>=config.openingPairs.min && count<=config.openingPairs.max,'difficulty budget is preserved');
+    assert.equal(count,1,'one-opening difficulty budget is preserved');
     let continuing=false;
     for(let r=0;r<14;r++)for(let c=0;c<10;c++)for(const t of findTargets(result.board,r,c)){
       const next=result.board.map(row=>row.slice());

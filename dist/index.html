@@ -77,10 +77,11 @@
   <dialog id="deadlockDialog" class="dialog dialog--deadlock" aria-labelledby="deadlockTitle">
     <div class="dialog__card">
       <h2 class="dialog__title" id="deadlockTitle">陷入死局</h2>
-      <p class="dialog__desc">当前盘面已无可消除对。</p>
+      <p class="dialog__desc" id="deadlockDesc">当前盘面已无可消除对。</p>
       <div class="dialog__actions">
         <button class="tool tool--secondary" data-deadlock-retry type="button">重试本关</button>
         <button class="tool tool--primary" data-deadlock-reshuffle type="button" autofocus>使用一次重排</button>
+        <button class="tool tool--primary" data-deadlock-reward type="button" hidden>观看广告，重排一次</button>
       </div>
     </div>
   </dialog>

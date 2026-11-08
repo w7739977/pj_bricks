@@ -36,3 +36,8 @@ Node.js20+，无需安装第三方依赖。在项目根目录运行 `npm run tes
 运行 `node tools/performance-lab/playability-audit.mjs`，默认对 9 档关卡各跑 200 局，结果写入 `test-artifacts/playability/audit.json`。可用 `AUDIT_RUNS=20` 缩短每档局数，或传入输出文件路径。独立动作枚举以坐标平移和射线扫描检查生产死局判定，采用直接消除优先的随机策略，不代表真人通关率或浏览器渲染性能。
 
 线上报告提供“下载完整报告”链接；超过 200,000 字符时文本框仅显示摘要，避免大 JSON 的布局开销。零提示关卡也会采样；动画中被游戏忽略的输入可能出现在记录里，仍须按有效拖动门槛筛选。
+
+
+## 连续闯关难度校准
+
+`node tools/performance-lab/balance-audit.mjs` 默认运行 25 档 × 200 局，输出 `test-artifacts/playability/balance.json`。可设置 `BALANCE_RUNS`、`BALANCE_LEVELS` 和 `BALANCE_SEED`（种子偏移），或传入输出 JSON 路径。脚本同时估计只用赠送道具、每关多补充 1/2/3 次重排的存活曲线；真实游戏广告奖励上限为每关每次尝试 1 次。单关样本合成的期望和到达率只是自动策略校准值，需要真人数据验证。

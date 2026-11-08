@@ -9,6 +9,7 @@ import { createGameAudio } from './game-audio.js';
 import { installEdgeGestureGuard } from './edge-gesture.js';
 import { createBrowserDialogManager } from './dialogs.js';
 import { createLevelSession } from './level-session.js';
+import { createRewardedAdGateway, requestReshuffleReward } from './rewarded-ads.js';
 import { createRandomSeed, createSeededRng, getLevelConfig } from './levels.js';
 import { createDefaultProgress, loadProgress, saveProgress } from './progress.js';
 import { playMatchFeedback } from './burst-effects.js';
@@ -46,6 +47,7 @@ const state = {
 const DRAG_THRESHOLD = 10;
 const SNAP_DURATION = 120;
 const audio = createGameAudio();
+const rewardedAds = createRewardedAdGateway();
 let previewCells = new Set();
 let lastMatchAt = -Infinity;
 let combo = 0;
@@ -641,18 +643,43 @@ async function handleDeadlock() {
   // Revalidate the current board at the final entry point, including hint calls.
   if (hasAnySolvablePairDeep(state.board)) return;
   const sessionId = state.levelSessionId;
-  const outcome = state.levelSession.deadlock();
+  const canEarnReshuffle = () => rewardedAds.isAvailable() &&
+    state.levelSession.canEarnRewardedReshuffle();
+  const outcome = state.levelSession.deadlock({ canEarnReshuffle: canEarnReshuffle() });
   setBusy(true);
   // 诊断埋点：输出盘面矩阵与搜索结论，便于争议复盘
   console.info('[deadlock-check]', JSON.stringify(state.board), outcome.action);
 
-  if (outcome.action === 'offer-reshuffle') {
-    const choice = await dialogs.showDeadlock();
-    if (!sessionStillCurrent(sessionId)) return;
-    setBusy(false);
-    if (choice === 'cancelled' || choice === null) return;
-    if (choice === 'retry') retryCurrentLevel();
-    else tryReshuffle();
+  if (outcome.action === 'offer-reshuffle' || outcome.action === 'offer-rewarded-reshuffle') {
+    let message = '';
+    while (sessionStillCurrent(sessionId)) {
+      const canReshuffle = state.levelSession.snapshot().reshufflesRemaining > 0;
+      const choice = await dialogs.showDeadlock({
+        canReshuffle, canReward: !canReshuffle && canEarnReshuffle(), message,
+      });
+      if (!sessionStillCurrent(sessionId)) return;
+      if (choice === 'reward') {
+        const result = await requestReshuffleReward({
+          gateway: rewardedAds, session: state.levelSession,
+          isCurrent: () => sessionStillCurrent(sessionId), levelNumber: state.currentLevel,
+        });
+        // Retry/navigation may have replaced the level while an ad was open.
+        if (!sessionStillCurrent(sessionId)) return;
+        if (result.status === 'rewarded') {
+          setBusy(false);
+          tryReshuffle();
+          return;
+        }
+        message = result.status === 'cancelled'
+          ? '广告未完成，未获得重排。可以再试一次或重试本关。'
+          : '暂时无法获得广告奖励，可以稍后再试或重试本关。';
+        continue;
+      }
+      setBusy(false);
+      if (choice === 'retry') retryCurrentLevel();
+      else if (choice === 'reshuffle') tryReshuffle();
+      return;
+    }
     return;
   }
 

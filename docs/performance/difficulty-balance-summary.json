@@ -1,0 +1,444 @@
+{
+  "target": "首次需要重试或额外救局约第10关；15–20关通常依赖额外重排",
+  "trials": 9000,
+  "calibration": {
+    "runsPerLevel": 200,
+    "levels": 25,
+    "seedOffset": 0,
+    "curves": [
+      {
+        "extraReshufflesPerLevel": 0,
+        "expectedStopCapped": 10.446780764439582,
+        "censoredBeyond": 25,
+        "reach": [
+          {
+            "level": 1,
+            "probability": 1
+          },
+          {
+            "level": 2,
+            "probability": 1
+          },
+          {
+            "level": 3,
+            "probability": 1
+          },
+          {
+            "level": 4,
+            "probability": 1
+          },
+          {
+            "level": 5,
+            "probability": 0.98
+          },
+          {
+            "level": 6,
+            "probability": 0.9751
+          },
+          {
+            "level": 7,
+            "probability": 0.945847
+          },
+          {
+            "level": 8,
+            "probability": 0.912742355
+          },
+          {
+            "level": 9,
+            "probability": 0.8716689490249999
+          },
+          {
+            "level": 10,
+            "probability": 0.56658481686625
+          },
+          {
+            "level": 11,
+            "probability": 0.39094352363771245
+          },
+          {
+            "level": 12,
+            "probability": 0.27756990178277585
+          },
+          {
+            "level": 13,
+            "probability": 0.18042043615880432
+          },
+          {
+            "level": 14,
+            "probability": 0.12449010094957497
+          },
+          {
+            "level": 15,
+            "probability": 0.08029611511247585
+          },
+          {
+            "level": 16,
+            "probability": 0.05179099424754693
+          },
+          {
+            "level": 17,
+            "probability": 0.031592506491003626
+          },
+          {
+            "level": 18,
+            "probability": 0.019903279089332284
+          },
+          {
+            "level": 19,
+            "probability": 0.012937131408065985
+          },
+          {
+            "level": 20,
+            "probability": 0.008667878043404211
+          },
+          {
+            "level": 21,
+            "probability": 0.0061541934108169894
+          },
+          {
+            "level": 22,
+            "probability": 0.003969454749976958
+          },
+          {
+            "level": 23,
+            "probability": 0.0025404510399852534
+          },
+          {
+            "level": 24,
+            "probability": 0.0016893999415901937
+          },
+          {
+            "level": 25,
+            "probability": 0.0010981099620336258
+          },
+          {
+            "level": 26,
+            "probability": 0.0007741675232337061
+          }
+        ]
+      },
+      {
+        "extraReshufflesPerLevel": 1,
+        "expectedStopCapped": 20.97661886263885,
+        "censoredBeyond": 25,
+        "reach": [
+          {
+            "level": 1,
+            "probability": 1
+          },
+          {
+            "level": 2,
+            "probability": 1
+          },
+          {
+            "level": 3,
+            "probability": 1
+          },
+          {
+            "level": 4,
+            "probability": 1
+          },
+          {
+            "level": 5,
+            "probability": 1
+          },
+          {
+            "level": 6,
+            "probability": 1
+          },
+          {
+            "level": 7,
+            "probability": 1
+          },
+          {
+            "level": 8,
+            "probability": 1
+          },
+          {
+            "level": 9,
+            "probability": 0.99
+          },
+          {
+            "level": 10,
+            "probability": 0.9503999999999999
+          },
+          {
+            "level": 11,
+            "probability": 0.8981279999999998
+          },
+          {
+            "level": 12,
+            "probability": 0.8756747999999998
+          },
+          {
+            "level": 13,
+            "probability": 0.8625396779999998
+          },
+          {
+            "level": 14,
+            "probability": 0.8150999957099997
+          },
+          {
+            "level": 15,
+            "probability": 0.7824959958815997
+          },
+          {
+            "level": 16,
+            "probability": 0.7433711960875197
+          },
+          {
+            "level": 17,
+            "probability": 0.7099194922635813
+          },
+          {
+            "level": 18,
+            "probability": 0.6779731151117201
+          },
+          {
+            "level": 19,
+            "probability": 0.6542440560828099
+          },
+          {
+            "level": 20,
+            "probability": 0.6411591749611537
+          },
+          {
+            "level": 21,
+            "probability": 0.6187186038375133
+          },
+          {
+            "level": 22,
+            "probability": 0.5877826736456376
+          },
+          {
+            "level": 23,
+            "probability": 0.5701491934362685
+          },
+          {
+            "level": 24,
+            "probability": 0.5530447176331804
+          },
+          {
+            "level": 25,
+            "probability": 0.5309229289278532
+          },
+          {
+            "level": 26,
+            "probability": 0.5149952410600176
+          }
+        ]
+      }
+    ]
+  },
+  "holdout": {
+    "runsPerLevel": 200,
+    "levels": 20,
+    "seedOffset": 777,
+    "curves": [
+      {
+        "extraReshufflesPerLevel": 0,
+        "expectedStopCapped": 10.55966137884241,
+        "censoredBeyond": 20,
+        "reach": [
+          {
+            "level": 1,
+            "probability": 1
+          },
+          {
+            "level": 2,
+            "probability": 1
+          },
+          {
+            "level": 3,
+            "probability": 1
+          },
+          {
+            "level": 4,
+            "probability": 1
+          },
+          {
+            "level": 5,
+            "probability": 0.97
+          },
+          {
+            "level": 6,
+            "probability": 0.94575
+          },
+          {
+            "level": 7,
+            "probability": 0.926835
+          },
+          {
+            "level": 8,
+            "probability": 0.89902995
+          },
+          {
+            "level": 9,
+            "probability": 0.8765542012499999
+          },
+          {
+            "level": 10,
+            "probability": 0.6223534828874999
+          },
+          {
+            "level": 11,
+            "probability": 0.4294239031923749
+          },
+          {
+            "level": 12,
+            "probability": 0.29200825417081494
+          },
+          {
+            "level": 13,
+            "probability": 0.20586581919042451
+          },
+          {
+            "level": 14,
+            "probability": 0.13998875704948868
+          },
+          {
+            "level": 15,
+            "probability": 0.08819291694117787
+          },
+          {
+            "level": 16,
+            "probability": 0.05556153767294206
+          },
+          {
+            "level": 17,
+            "probability": 0.04000430712451828
+          },
+          {
+            "level": 18,
+            "probability": 0.027202928844672434
+          },
+          {
+            "level": 19,
+            "probability": 0.019314079479717427
+          },
+          {
+            "level": 20,
+            "probability": 0.013037003648809263
+          },
+          {
+            "level": 21,
+            "probability": 0.008539237389970068
+          }
+        ]
+      },
+      {
+        "extraReshufflesPerLevel": 1,
+        "expectedStopCapped": 18.184936178823126,
+        "censoredBeyond": 20,
+        "reach": [
+          {
+            "level": 1,
+            "probability": 1
+          },
+          {
+            "level": 2,
+            "probability": 1
+          },
+          {
+            "level": 3,
+            "probability": 1
+          },
+          {
+            "level": 4,
+            "probability": 1
+          },
+          {
+            "level": 5,
+            "probability": 1
+          },
+          {
+            "level": 6,
+            "probability": 1
+          },
+          {
+            "level": 7,
+            "probability": 1
+          },
+          {
+            "level": 8,
+            "probability": 0.995
+          },
+          {
+            "level": 9,
+            "probability": 0.990025
+          },
+          {
+            "level": 10,
+            "probability": 0.945473875
+          },
+          {
+            "level": 11,
+            "probability": 0.921837028125
+          },
+          {
+            "level": 12,
+            "probability": 0.8895727321406249
+          },
+          {
+            "level": 13,
+            "probability": 0.8584376865157031
+          },
+          {
+            "level": 14,
+            "probability": 0.8155158021899179
+          },
+          {
+            "level": 15,
+            "probability": 0.7910503281242204
+          },
+          {
+            "level": 16,
+            "probability": 0.735676805155525
+          },
+          {
+            "level": 17,
+            "probability": 0.7099281169750816
+          },
+          {
+            "level": 18,
+            "probability": 0.6708820705414521
+          },
+          {
+            "level": 19,
+            "probability": 0.6373379670143795
+          },
+          {
+            "level": 20,
+            "probability": 0.6245912076740919
+          },
+          {
+            "level": 21,
+            "probability": 0.5996075593671283
+          }
+        ]
+      }
+    ]
+  },
+  "browser": {
+    "level": 9,
+    "seed": 189,
+    "usingLocalTestDouble": true,
+    "cancelled": {
+      "boardUnchanged": true,
+      "remainingTiles": 36,
+      "resource": "手动重排，剩余 0 次",
+      "message": "广告未完成，未获得重排。可以再试一次或重试本关。",
+      "dialogOpen": ""
+    },
+    "completed": {
+      "boardChanged": true,
+      "sameMultiset": true,
+      "remainingTiles": 36,
+      "resource": "手动重排，剩余 0 次",
+      "hasLegalMove": true,
+      "calls": "本地广告接口测试（非真实广告）：调用 2 次"
+    }
+  },
+  "realAdSdkConnected": false,
+  "unitTests": 127
+}

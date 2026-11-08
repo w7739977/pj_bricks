@@ -28,7 +28,10 @@ export function createDialogManager({ getDialog }) {
       };
 
       listen(dialog, 'cancel', event => event.preventDefault());
-      listen(dialog, 'close', () => settle(closeValue));
+      // Native close events are queued. A previous close can arrive after the
+      // same dialog has reopened (e.g. a cancelled ad). Do not treat that stale
+      // event as a close of the newly open dialog and accidentally retry.
+      listen(dialog, 'close', () => { if (!dialog.open) settle(closeValue); });
       install({ dialog, listen, settle });
       active.set(id, { cancel: () => settle('cancelled') });
       try {
@@ -69,8 +72,19 @@ export function createDialogManager({ getDialog }) {
       });
     },
 
-    showDeadlock() {
+    showDeadlock({ canReshuffle = true, canReward = false, message = '' } = {}) {
       return open('deadlockDialog', 'retry', ({ dialog, listen, settle }) => {
+        const description = getDialog('deadlockDesc');
+        if (description) description.textContent = message || (canReward
+          ? '当前盘面已无可消除对。完整观看广告可获得一次重排。'
+          : '当前盘面已无可消除对。');
+        const reshuffle = dialog.querySelector('[data-deadlock-reshuffle]');
+        const reward = dialog.querySelector('[data-deadlock-reward]');
+        reshuffle.hidden = !canReshuffle;
+        if (reward) {
+          reward.hidden = !canReward;
+          if (canReward) listen(reward, 'click', () => settle('reward'));
+        }
         listen(
           dialog.querySelector('[data-deadlock-retry]'),
           'click',
@@ -79,7 +93,7 @@ export function createDialogManager({ getDialog }) {
         listen(
           dialog.querySelector('[data-deadlock-reshuffle]'),
           'click',
-          () => settle('reshuffle'),
+          () => { if (canReshuffle) settle('reshuffle'); },
         );
       });
     },

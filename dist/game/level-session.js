@@ -2,6 +2,7 @@ export function createLevelSession({ progress, config, createNextSeed }) {
   const initial = Object.freeze({
     hints: config.hints,
     reshuffles: config.reshuffles,
+    rewardedReshuffleLimit: config.rewardedReshuffleLimit ?? 0,
   });
   const state = {
     currentLevel: progress.currentLevel,
@@ -9,6 +10,7 @@ export function createLevelSession({ progress, config, createNextSeed }) {
     levelSeed: progress.levelSeed,
     hintsRemaining: initial.hints,
     reshufflesRemaining: initial.reshuffles,
+    rewardedReshufflesUsed: 0,
     phase: 'playing',
     failureReason: null,
   };
@@ -18,6 +20,7 @@ export function createLevelSession({ progress, config, createNextSeed }) {
   function retry() {
     state.hintsRemaining = initial.hints;
     state.reshufflesRemaining = initial.reshuffles;
+    state.rewardedReshufflesUsed = 0;
     state.phase = 'playing';
     state.failureReason = null;
     return snapshot();
@@ -32,12 +35,29 @@ export function createLevelSession({ progress, config, createNextSeed }) {
     return { action: 'highlight-pair' };
   }
 
-  function deadlock() {
+  function deadlock({ canEarnReshuffle = false } = {}) {
     if (state.phase !== 'playing') return { action: 'none' };
     if (state.reshufflesRemaining > 0) return { action: 'offer-reshuffle' };
+    if (canEarnReshuffle && state.rewardedReshufflesUsed < initial.rewardedReshuffleLimit) {
+      return { action: 'offer-rewarded-reshuffle' };
+    }
     state.phase = 'failed';
     state.failureReason = 'deadlock';
     return { action: 'failed' };
+  }
+
+  function canEarnRewardedReshuffle() {
+    return state.phase === 'playing' && state.reshufflesRemaining === 0 &&
+      state.rewardedReshufflesUsed < initial.rewardedReshuffleLimit;
+  }
+
+  function grantRewardedReshuffle() {
+    if (!canEarnRewardedReshuffle()) {
+      return { action: 'none' };
+    }
+    state.rewardedReshufflesUsed++;
+    state.reshufflesRemaining++;
+    return { action: 'granted' };
   }
 
   function useReshuffle({ success }) {
@@ -83,6 +103,8 @@ export function createLevelSession({ progress, config, createNextSeed }) {
     useHint,
     deadlock,
     useReshuffle,
+    grantRewardedReshuffle,
+    canEarnRewardedReshuffle,
     complete,
     fail,
   };

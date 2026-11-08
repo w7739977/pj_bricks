@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { createLevelSession } from '../dist/game/level-session.js';
 
-function session({ level = 4, seed = null, hints = 2, reshuffles = 1 } = {}) {
+function session({ level = 4, seed = null, hints = 2, reshuffles = 1, rewardedReshuffleLimit = 0 } = {}) {
   return createLevelSession({
     progress: {
       version: 1,
@@ -11,7 +11,7 @@ function session({ level = 4, seed = null, hints = 2, reshuffles = 1 } = {}) {
       highestUnlocked: level,
       levelSeed: seed,
     },
-    config: { hints, reshuffles },
+    config: { hints, reshuffles, rewardedReshuffleLimit },
     createNextSeed: () => 987654321,
   });
 }
@@ -27,6 +27,7 @@ test('retry keeps level and seed while restoring configured resources', () => {
     levelSeed: null,
     hintsRemaining: 2,
     reshufflesRemaining: 1,
+    rewardedReshufflesUsed: 0,
     phase: 'playing',
     failureReason: null,
   });
@@ -94,4 +95,20 @@ test('resources cannot be consumed outside playing phase', () => {
 
   assert.deepEqual(value.useHint({ pairAvailable: true }), { action: 'none' });
   assert.deepEqual(value.useReshuffle({ success: true }), { action: 'none' });
+});
+
+test('rewarded rescue preserves playing phase and has a per-attempt limit', () => {
+  const value=session({reshuffles:0,rewardedReshuffleLimit:1});
+  assert.deepEqual(value.deadlock({canEarnReshuffle:true}),{action:'offer-rewarded-reshuffle'});
+  assert.equal(value.snapshot().phase,'playing');
+  assert.deepEqual(value.grantRewardedReshuffle(),{action:'granted'});
+  assert.equal(value.snapshot().reshufflesRemaining,1);
+  assert.equal(value.snapshot().rewardedReshufflesUsed,1);
+  assert.deepEqual(value.grantRewardedReshuffle(),{action:'none'});
+  value.useReshuffle({success:true});
+  assert.deepEqual(value.deadlock({canEarnReshuffle:true}),{action:'failed'});
+  assert.deepEqual(value.grantRewardedReshuffle(),{action:'none'});
+  const reset=value.retry();
+  assert.equal(reset.rewardedReshufflesUsed,0);
+  assert.equal(reset.reshufflesRemaining,0);
 });
