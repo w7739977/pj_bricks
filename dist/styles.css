@@ -836,3 +836,10 @@ body { background: radial-gradient(ellipse at 50% 15%, #77bda0, #418e76 78%); }
   .cell .veg, .drag-layer .veg { animation: none !important; transform: none !important; translate: none !important; }
   .cell.pop .tile-piece, .cell.pop::after { animation: none; }
 }
+
+/* Performance mitigation: avoid animated filtered SVGs on the tile board.
+   Keep tile shadows, drag transforms and match feedback. */
+.cell .veg, .drag-layer .veg {
+  filter: none !important;
+  animation: none !important;
+}

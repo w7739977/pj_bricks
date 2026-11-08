@@ -1,0 +1,231 @@
+{
+  "url": "http://119.91.53.223:3013/?tool=1",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+  "viewport": {
+    "width": 1200,
+    "height": 822,
+    "dpr": 2
+  },
+  "navigation": [
+    {
+      "domContentLoaded": 5201.89999961853,
+      "load": 5213.699998855591,
+      "response": 927.1999988555908
+    }
+  ],
+  "sessions": [
+    {
+      "id": 2,
+      "variant": "original",
+      "moves": 264,
+      "frameStats": {
+        "count": 299,
+        "mean": 16.66354515050165,
+        "p95": 17.60000000000582,
+        "max": 17.79999999998836
+      },
+      "releaseStats": {
+        "count": 60,
+        "mean": 16.681666666667056,
+        "p95": 17.60000000000582,
+        "max": 17.79999999998836
+      },
+      "processingStats": {
+        "count": 264,
+        "mean": 0.06704546466018214,
+        "p95": 0.10000038146972656,
+        "max": 4.799999237060547
+      },
+      "inputMode": "trusted hold + synthetic frame-paced moves",
+      "movedLayerObserved": true,
+      "verdict": "no jank observed in this sample"
+    },
+    {
+      "id": 3,
+      "variant": "original",
+      "moves": 264,
+      "frameStats": {
+        "count": 300,
+        "mean": 16.66700000000002,
+        "p95": 17.599999999976717,
+        "max": 17.70000000001164
+      },
+      "releaseStats": {
+        "count": 60,
+        "mean": 16.664999999999903,
+        "p95": 17.599999999976717,
+        "max": 17.70000000001164
+      },
+      "processingStats": {
+        "count": 264,
+        "mean": 0.056818189042987244,
+        "p95": 0.10000038146972656,
+        "max": 2.6999988555908203
+      },
+      "inputMode": "trusted hold + synthetic frame-paced moves",
+      "movedLayerObserved": true,
+      "verdict": "no jank observed in this sample"
+    },
+    {
+      "id": 4,
+      "variant": "original",
+      "moves": 264,
+      "frameStats": {
+        "count": 300,
+        "mean": 16.66400000000004,
+        "p95": 17.5,
+        "max": 17.70000000001164
+      },
+      "releaseStats": {
+        "count": 60,
+        "mean": 16.679999999999804,
+        "p95": 17.60000000000582,
+        "max": 17.699999999982538
+      },
+      "processingStats": {
+        "count": 264,
+        "mean": 0.056060595945878464,
+        "p95": 0.10000038146972656,
+        "max": 2.3999996185302734
+      },
+      "inputMode": "trusted hold + synthetic frame-paced moves",
+      "movedLayerObserved": true,
+      "verdict": "no jank observed in this sample"
+    },
+    {
+      "id": 5,
+      "variant": "original",
+      "moves": 264,
+      "frameStats": {
+        "count": 300,
+        "mean": 16.666666666666668,
+        "p95": 17.5,
+        "max": 17.699999999982538
+      },
+      "releaseStats": {
+        "count": 60,
+        "mean": 16.666666666666668,
+        "p95": 17.5,
+        "max": 17.70000000001164
+      },
+      "processingStats": {
+        "count": 264,
+        "mean": 0.051893971183083275,
+        "p95": 0.10000038146972656,
+        "max": 2.700000762939453
+      },
+      "inputMode": "trusted hold + synthetic frame-paced moves",
+      "movedLayerObserved": true,
+      "verdict": "no jank observed in this sample"
+    },
+    {
+      "id": 6,
+      "variant": "lab-fix",
+      "moves": 264,
+      "frameStats": {
+        "count": 300,
+        "mean": 16.66799999999998,
+        "p95": 17.5,
+        "max": 17.70000000001164
+      },
+      "releaseStats": {
+        "count": 60,
+        "mean": 16.666666666666668,
+        "p95": 17.60000000000582,
+        "max": 17.699999999982538
+      },
+      "processingStats": {
+        "count": 264,
+        "mean": 0.04810607072078821,
+        "p95": 0.10000038146972656,
+        "max": 2.8000011444091797
+      },
+      "inputMode": "trusted hold + synthetic frame-paced moves",
+      "movedLayerObserved": true,
+      "verdict": "no jank observed in this sample"
+    },
+    {
+      "id": 7,
+      "variant": "lab-fix",
+      "moves": 264,
+      "frameStats": {
+        "count": 300,
+        "mean": 16.666333333333313,
+        "p95": 17.60000000000582,
+        "max": 17.79999999998836
+      },
+      "releaseStats": {
+        "count": 60,
+        "mean": 16.66833333333343,
+        "p95": 17.60000000000582,
+        "max": 17.70000000001164
+      },
+      "processingStats": {
+        "count": 264,
+        "mean": 0.04962117744214607,
+        "p95": 0.10000038146972656,
+        "max": 2.1000003814697266
+      },
+      "inputMode": "trusted hold + synthetic frame-paced moves",
+      "movedLayerObserved": true,
+      "verdict": "no jank observed in this sample"
+    },
+    {
+      "id": 8,
+      "variant": "lab-fix",
+      "moves": 264,
+      "frameStats": {
+        "count": 300,
+        "mean": 16.66599999999996,
+        "p95": 17.60000000000582,
+        "max": 17.800000000017462
+      },
+      "releaseStats": {
+        "count": 59,
+        "mean": 16.655932203390027,
+        "p95": 17.70000000001164,
+        "max": 17.70000000001164
+      },
+      "processingStats": {
+        "count": 264,
+        "mean": 0.05378791057702267,
+        "p95": 0.10000038146972656,
+        "max": 2.6000003814697266
+      },
+      "inputMode": "trusted hold + synthetic frame-paced moves",
+      "movedLayerObserved": true,
+      "verdict": "no jank observed in this sample"
+    },
+    {
+      "id": 9,
+      "variant": "lab-fix",
+      "moves": 265,
+      "frameStats": {
+        "count": 300,
+        "mean": 16.666666666666668,
+        "p95": 17.60000000000582,
+        "max": 17.70000000001164
+      },
+      "releaseStats": {
+        "count": 60,
+        "mean": 16.664999999999903,
+        "p95": 17.400000000023283,
+        "max": 17.70000000001164
+      },
+      "processingStats": {
+        "count": 265,
+        "mean": 0.05018872674906029,
+        "p95": 0.10000038146972656,
+        "max": 2.3000011444091797
+      },
+      "inputMode": "trusted hold + synthetic frame-paced moves",
+      "movedLayerObserved": true,
+      "verdict": "no jank observed in this sample"
+    }
+  ],
+  "frames": 2399,
+  "moves": 2113,
+  "errors": [],
+  "latestResourceStartMs": 1862.3999996185303,
+  "firstInteractionStartMs": 174375.89999961853
+}

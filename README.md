@@ -1,5 +1,9 @@
 # 田园连连看 · 简洁 Q 版
 
+2026-11-08 性能修正：关闭棋盘图案的SVG投影滤镜与空闲呼吸动画，保留棋子阴影和操作反馈。Mac Safari长链松手尖峰由234–287ms降至23–45ms；直接线上Mac Chrome未复现同类尖峰。iPhone Chrome真机仍待验收。详见[性能报告](docs/performance/2026-11-08.md)。
+
+新增 `npm run test:perf`，启动独立本机性能测试页；说明见[测试入口](tools/performance-lab/README.md)。
+
 2026-10-22 美术与反馈升级版。基于 2026-10-14 禁用选择与边缘手势版本继续修改，尚未进行 iPhone 真机验收。
 
 ## 快速运行
