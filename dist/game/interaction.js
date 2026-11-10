@@ -44,8 +44,9 @@ const state = {
   effectCleanup: null,
 };
 
-const DRAG_THRESHOLD = 10;
+const DRAG_THRESHOLD = 5;
 const SNAP_DURATION = 120;
+const RETURN_DURATION = 170;
 const audio = createGameAudio();
 const rewardedAds = createRewardedAdGateway();
 let previewCells = new Set();
@@ -419,7 +420,10 @@ function selectAndEvaluate(r, c) {
     state.candidates.forEach(p => p.el.classList.add('hint'));
     updateLevelControls();
   } else {
-    shakeSameEmoji(state.board[r][c]);
+    if (!el.classList.contains('unmatched')) {
+      el.classList.add('unmatched');
+      scheduleForSession(() => el.classList.remove('unmatched'), 180);
+    }
   }
 }
 
@@ -485,20 +489,6 @@ function cancelSelection() {
   state.candidates = [];
   state.mode = 'idle';
   updateLevelControls();
-}
-
-function shakeSameEmoji(value) {
-  const targets = [];
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-      if (state.board[r][c] === value) targets.push(state.cellEls[r][c]);
-  if (!targets.length) return;
-  targets.forEach(el => {
-    el.classList.remove('shake');
-    void el.offsetWidth;
-    el.classList.add('shake');
-  });
-  scheduleForSession(() => targets.forEach(el => el.classList.remove('shake')), 580);
 }
 
 // ---- 提示与资源 ----
@@ -727,6 +717,8 @@ function onPointerDown(e) {
   if (state.busy || state.phase !== 'playing' || state.drag) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   if (!dragInput.begin(e.pointerId)) return;
+  // Finish a previous visual return before picking up another tile.
+  moveAnimator.releaseFollow();
 
   let cell = cellFromTarget(e.target);
   if (!cell) {
@@ -761,7 +753,6 @@ function onPointerDown(e) {
     chain: null,
     chainCells: null,
     bounds: null,
-    appliedTotal: 0,
     lastShift: 0,
     dragged: false,
     moved: false,
@@ -770,7 +761,6 @@ function onPointerDown(e) {
     visualOffset: { x: 0, y: 0 },
     locked: false,
     blockedDirection: 0,
-    blockedHintAt: 0,
   };
   audio.wake();
   audio.pick();
@@ -814,11 +804,7 @@ function clearDragFeedback() {
 }
 
 // ---- 拖拽轨迹线：行列均增强，辅助确认匹配轨迹 ----
-// 移动所沿的线固定亮：水平拖动亮所在整行，竖直拖动亮所在整列；
-// 穿过的线跟随棋子：水平拖动时棋子所在列随移动逐格平移，
-// 竖直拖动时所在行随之平移；轴未定时行列均亮。
-// 只增强空白格，已有棋子的格子不染色。
-// 自适应对比由 CSS mix-blend-mode:difference 完成（浅底加深、深底提亮）。
+// 轨迹固定在拖拽轴线上，空位以手势开始时的棋盘为准。
 let traceCells = new Set();
 let vacatedCells = new Set();
 let draggingCells = new Set();
@@ -831,10 +817,11 @@ function updateDragTrace() {
   const onLine = !d?.axis
     ? (r,c) => d && (r === d.r || c === d.c)
     : d.axis === 'row'
-      ? (r,c) => r === d.r || c === d.curC
-      : (r,c) => c === d.c || r === d.curR;
+      ? (r,c) => r === d.r
+      : (r,c) => c === d.c;
+  const board = d?.snapshot ?? state.board;
   for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
-    if (state.board[r][c] !== null) continue;
+    if (board[r][c] !== null) continue;
     const el = state.cellEls[r][c];
     nextVacated.add(el);
     if (d && !d.locked && onLine(r,c)) nextTrace.add(el);
@@ -905,7 +892,6 @@ function handleDragMove(x, y) {
         positions: state.drag.chainCells, axis: state.drag.axis,
         pitch: state.pitch, rows: ROWS, cols: COLS, board: state.drag.snapshot,
       });
-      state.drag.appliedTotal = 0;
       // 整行/列无任何空格时链不可能平移，锁定视觉位移
       if (!hasLineEmptyCell(state.board, state.drag.curR, state.drag.curC, state.drag.axis)) {
         state.drag.locked = true;
@@ -942,32 +928,26 @@ function handleDragMove(x, y) {
     if (state.drag.axis === 'row') state.drag.curC += result.applied;
     else state.drag.curR += result.applied;
     state.drag.moved = true;
-    state.drag.appliedTotal += result.applied;
-    updateDragTrace(); // 轨迹线跟随棋子所在行/列移动
     refreshDragPreview();
     // 拖拽期间不调用 syncDOM：内容固定在原始格，仅靠 transform 位移，
     // 避免跨格时重建 innerHTML 造成的掉帧；模型照常更新，落子时一次性同步
   }
 
   // 视觉残差：只有拖拽轴上有分量，另一轴恒为 0
+  // Blend into 1:1 following over the first few pixels to avoid a jump at axis lock.
+  const pickup = Math.min(1, Math.max(0, (Math.abs(rawDistance) - DRAG_THRESHOLD) / DRAG_THRESHOLD));
+  const offset = result.visualOffset - distance * (1 - pickup);
   const residual = state.drag.axis === 'row'
-    ? { x: result.visualOffset, y: 0 }
-    : { x: 0, y: result.visualOffset };
+    ? { x: offset, y: 0 }
+    : { x: 0, y: offset };
   state.drag.visualOffset = residual;
   // 视觉总位移 = 已吸附格数 × 格距 + 残差，且只加在拖拽轴上
   const totalOffset = state.drag.axis === 'row'
-    ? { x: state.drag.appliedTotal * state.pitch + residual.x, y: 0 }
-    : { x: 0, y: state.drag.appliedTotal * state.pitch + residual.y };
+    ? { x: result.lastShift * state.pitch + residual.x, y: 0 }
+    : { x: 0, y: result.lastShift * state.pitch + residual.y };
   moveAnimator.follow(state.drag.chainCells, totalOffset.x, totalOffset.y);
 
   setDragBlocked(result.constrained || Math.abs(rawDistance - distance) > .5);
-  if (result.constrained) {
-    const now = Date.now();
-    if (now - state.drag.blockedHintAt > 200) {
-      state.drag.blockedHintAt = now;
-      if (navigator.vibrate) navigator.vibrate(8);
-    }
-  }
 }
 
 function onPointerUp(e) {
@@ -1006,11 +986,10 @@ function onPointerUp(e) {
   }
 
   const targets = findTargets(state.board, info.curR, info.curC);
-  const revertMoves = createShiftRevertMoves(info.r, info.c, info.curR, info.curC, info.chain);
   if (targets.length === 0) {
     restoreBoard(state.board, info.snapshot);
-    syncDOM();
-    animateMoves(revertMoves, 200, info.visualOffset);
+    // The original tiles are still in the DOM. Return the same moving layer.
+    moveAnimator.settleFollow(motionDuration(RETURN_DURATION));
     showTip('无可消除，已还原');
     return;
   }
@@ -1042,6 +1021,7 @@ function onPointerUp(e) {
       el: state.cellEls[target.r][target.c],
     }));
     state.candidates.forEach(candidate => candidate.el.classList.add('hint'));
+    const revertMoves = createShiftRevertMoves(info.r, info.c, info.curR, info.curC, info.chain);
     const pendingRevert = { snapshot: info.snapshot, revertMoves };
     state.pendingRevert = pendingRevert;
     updateLevelControls();
@@ -1077,10 +1057,8 @@ function onPointerCancel(e) {
     return;
   }
 
-  const revertMoves = createShiftRevertMoves(info.r, info.c, info.curR, info.curC, info.chain);
   restoreBoard(state.board, info.snapshot);
-  syncDOM();
-  animateMoves(revertMoves, 200, info.visualOffset);
+  moveAnimator.settleFollow(motionDuration(RETURN_DURATION));
   cancelSelection();
 }
 
