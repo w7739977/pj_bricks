@@ -46,9 +46,19 @@ const state = {
 
 const DRAG_THRESHOLD = 10;
 const SNAP_DURATION = 120;
+const RETURN_DURATION = 200;
+const SHAKE_EASING = 'cubic-bezier(0.36, 0.07, 0.19, 0.97)';
+const SHAKE_FRAMES = [
+  [0, 0, 0], [.1, -2, -2], [.2, 3, 3], [.3, -5, -4], [.4, 5, 4],
+  [.5, -5, -4], [.6, 5, 4], [.7, -5, -4], [.8, 3, 3], [.9, -2, -2], [1, 0, 0],
+].map(([offset, x, angle]) => ({
+  offset, translate: `${x}px`, rotate: `${angle}deg`, easing: SHAKE_EASING,
+}));
+const shakes = new WeakMap();
 const audio = createGameAudio();
 const rewardedAds = createRewardedAdGateway();
 let previewCells = new Set();
+let pressedCell = null;
 let lastMatchAt = -Infinity;
 let combo = 0;
 
@@ -106,7 +116,6 @@ function clearHintHighlight() {
 }
 
 function clearLevelAsync() {
-  clearDragFeedback();
   combo = 0;
   lastMatchAt = -Infinity;
   state.effectCleanup?.();
@@ -488,17 +497,21 @@ function cancelSelection() {
 }
 
 function shakeSameEmoji(value) {
-  const targets = [];
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-      if (state.board[r][c] === value) targets.push(state.cellEls[r][c]);
-  if (!targets.length) return;
-  targets.forEach(el => {
-    el.classList.remove('shake');
-    void el.offsetWidth;
-    el.classList.add('shake');
-  });
-  scheduleForSession(() => targets.forEach(el => el.classList.remove('shake')), 580);
+  const duration = motionDuration(520);
+  if (!duration) return;
+  const startTime = document.timeline.currentTime;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (state.board[r][c] !== value) continue;
+      const piece = state.cellEls[r][c].firstElementChild;
+      if (!piece) continue;
+      // Individual transform properties keep shake independent of drag/snap transforms.
+      shakes.get(piece)?.cancel();
+      const animation = piece.animate(SHAKE_FRAMES, duration);
+      if (startTime !== null) animation.startTime = startTime;
+      shakes.set(piece, animation);
+    }
+  }
 }
 
 // ---- 提示与资源 ----
@@ -751,6 +764,7 @@ function onPointerDown(e) {
     }
   }
   dragFrames.cancel();
+  moveAnimator.releaseFollow();
   measurePitch();
   const { x, y } = pointerXY(e);
   state.drag = {
@@ -774,7 +788,8 @@ function onPointerDown(e) {
   };
   audio.wake();
   audio.pick();
-  cell.el.classList.add('pressed');
+  pressedCell = cell.el;
+  pressedCell.classList.add('pressed');
   boardEl().classList.add('gesture-active');
   boardEl().setPointerCapture(e.pointerId);
   updateDragTrace();
@@ -787,17 +802,16 @@ function clearDragPreview() {
   previewCells.clear();
 }
 function refreshDragPreview() {
-  clearDragPreview();
   const d = state.drag;
-  if (!d?.moved) return;
+  const nextPreview = new Set();
   for (const p of findTargets(state.board, d.curR, d.curC)) {
     const el = state.cellEls[p.r][p.c];
     // Logical destinations can still contain an original moving source in DOM.
-    if (!draggingCells.has(el)) {
-      el.classList.add('match-preview');
-      previewCells.add(el);
-    }
+    if (!draggingCells.has(el)) nextPreview.add(el);
   }
+  for (const el of previewCells) if (!nextPreview.has(el)) el.classList.remove('match-preview');
+  for (const el of nextPreview) if (!previewCells.has(el)) el.classList.add('match-preview');
+  previewCells = nextPreview;
   boardEl().classList.toggle('match-ready', previewCells.size > 0);
 }
 function setDragBlocked(blocked) {
@@ -810,7 +824,8 @@ function clearDragFeedback() {
   const be = boardEl();
   be?.classList.remove('gesture-active', 'drag-blocked', 'match-ready');
   if (be) delete be.dataset.dragAxis;
-  for (const row of state.cellEls) for (const el of row) el.classList.remove('pressed');
+  pressedCell?.classList.remove('pressed');
+  pressedCell = null;
 }
 
 // ---- 拖拽轨迹线：行列均增强，辅助确认匹配轨迹 ----
@@ -818,7 +833,6 @@ function clearDragFeedback() {
 // 穿过的线跟随棋子：水平拖动时棋子所在列随移动逐格平移，
 // 竖直拖动时所在行随之平移；轴未定时行列均亮。
 // 只增强空白格，已有棋子的格子不染色。
-// 自适应对比由 CSS mix-blend-mode:difference 完成（浅底加深、深底提亮）。
 let traceCells = new Set();
 let vacatedCells = new Set();
 let draggingCells = new Set();
@@ -863,9 +877,8 @@ const dragFrames = createDragFrameQueue({
 
 function onPointerMove(e) {
   if (!state.drag || !dragInput.owns(e.pointerId)) return;
-  // Pointer delivery is already paint-aligned on many browsers. Do not add another
-  // rAF of latency: a cached chain now costs one compositor transform per event.
-  handleDragMove(e.clientX, e.clientY);
+  // Keep the latest point when touch events arrive faster than the display.
+  dragFrames.push(e.clientX, e.clientY);
 }
 
 function handleDragMove(x, y) {
@@ -1006,11 +1019,10 @@ function onPointerUp(e) {
   }
 
   const targets = findTargets(state.board, info.curR, info.curC);
-  const revertMoves = createShiftRevertMoves(info.r, info.c, info.curR, info.curC, info.chain);
   if (targets.length === 0) {
     restoreBoard(state.board, info.snapshot);
-    syncDOM();
-    animateMoves(revertMoves, 200, info.visualOffset);
+    // The original tiles are still in place under the moving layer.
+    moveAnimator.settleFollow(motionDuration(RETURN_DURATION));
     showTip('无可消除，已还原');
     return;
   }
@@ -1042,6 +1054,7 @@ function onPointerUp(e) {
       el: state.cellEls[target.r][target.c],
     }));
     state.candidates.forEach(candidate => candidate.el.classList.add('hint'));
+    const revertMoves = createShiftRevertMoves(info.r, info.c, info.curR, info.curC, info.chain);
     const pendingRevert = { snapshot: info.snapshot, revertMoves };
     state.pendingRevert = pendingRevert;
     updateLevelControls();
@@ -1077,10 +1090,8 @@ function onPointerCancel(e) {
     return;
   }
 
-  const revertMoves = createShiftRevertMoves(info.r, info.c, info.curR, info.curC, info.chain);
   restoreBoard(state.board, info.snapshot);
-  syncDOM();
-  animateMoves(revertMoves, 200, info.visualOffset);
+  moveAnimator.settleFollow(motionDuration(RETURN_DURATION));
   cancelSelection();
 }
 

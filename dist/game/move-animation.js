@@ -144,28 +144,32 @@ export function createMoveAnimator({
     following = new Map();
     let remaining = cells.length;
     const complete = () => {if (--remaining === 0) onComplete();};
+    for (const [el] of cells) cancelActive(el);
+    // Commit every starting offset with one layout read before the transitions.
+    void cells[0][0].offsetWidth;
     for (const [el,piece] of cells) {
-      cancelActive(el);
-      void el.offsetWidth;
       transitionToRest(el,duration,complete,piece);
     }
   }
   function animate(moves,duration,{offsetX=0,offsetY=0}={}) {
     if (moves.length === 0) {settleFollow(duration);return;}
     releaseFollowing();
+    const moved = [];
+    const pitch = getPitch();
     for (const move of moves) {
       const el = getCell(move.toR,move.toC);
       if (!el) continue;
       cancelActive(el);
       if (duration === 0) {clearCell(el);continue;}
-      const pitch = getPitch();
       const dx = (move.fromC-move.toC)*pitch+offsetX;
       const dy = (move.fromR-move.toR)*pitch+offsetY;
       el.style.transition = 'none';
       el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-      void el.offsetWidth;
-      transitionToRest(el,duration,()=>{});
+      moved.push(el);
     }
+    if (moved.length === 0) return;
+    void moved[0].offsetWidth;
+    for (const el of moved) transitionToRest(el,duration,()=>{});
   }
   function cancelAll() {
     releaseFollowing();
