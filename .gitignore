@@ -1,2 +1,5 @@
 node_modules/
 test-artifacts/
+
+# 无头试玩本地依赖（符号链接到 DSH profile 的 playwright-core）
+tools/playtest/node_modules/

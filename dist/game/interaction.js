@@ -1154,3 +1154,50 @@ function suppressBrowserGestures(boardElm) {
 }
 
 export function isDragging() { return Boolean(state.drag?.dragged); }
+
+// ---- 无头试玩契约（借鉴 dsh-game-studio：__gameState / __autoplay）----
+// 供无头浏览器测试读取状态、驱动真实玩法逻辑；不影响正常游玩。
+function countPieces(board) {
+  let n = 0;
+  if (!board) return n;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (board[r][c] !== null) n++;
+  return n;
+}
+
+export function getGameState() {
+  const session = state.levelSession ? state.levelSession.snapshot() : null;
+  return {
+    phase: state.phase,               // loading | playing | level-complete | failed
+    busy: state.busy,
+    mode: state.mode,                 // idle | selected | waiting
+    level: state.currentLevel,
+    pieces: countPieces(state.board),
+    hintsRemaining: session ? session.hintsRemaining : 0,
+    reshufflesRemaining: session ? session.reshufflesRemaining : 0,
+    solvablePair: state.board ? findSolvablePair(state.board) : null,
+    deepSolvable: state.board ? hasAnySolvablePairDeep(state.board) : false,
+  };
+}
+
+// 走 onCellClick 的真实交互路径执行一步消除。动画期间返回 wait，由调用方轮询。
+export function autoplayStep() {
+  if (!state.board || state.phase !== 'playing') return { action: 'stop', phase: state.phase };
+  if (state.busy || state.drag) return { action: 'wait' };
+  if (state.mode === 'waiting') {
+    // 上一步选中了多目标：点第一个候选完成消除（与真人点击等价）
+    const pick = state.candidates[0];
+    if (pick) onCellClick(pick.r, pick.c);
+    return { action: 'matched', via: 'candidate' };
+  }
+  if (state.pendingRevert) return { action: 'wait' };
+  const pair = findSolvablePair(state.board);
+  if (!pair) return { action: 'stuck', deepSolvable: hasAnySolvablePairDeep(state.board) };
+  onCellClick(pair.r1, pair.c1);
+  if (state.mode === 'waiting') {
+    const pick = state.candidates.find(p => state.board[p.r][p.c] === state.board[pair.r2][pair.c2]) || state.candidates[0];
+    if (pick) onCellClick(pick.r, pick.c);
+  }
+  return { action: 'matched', r1: pair.r1, c1: pair.c1, r2: pair.r2, c2: pair.c2 };
+}

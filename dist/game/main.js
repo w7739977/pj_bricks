@@ -1,4 +1,11 @@
-import { initGame } from './interaction.js';
+import { initGame, getGameState, autoplayStep } from './interaction.js';
+
+// 无头试玩契约：仅当显式 ?autoplay=1 时暴露（借鉴 dsh-game-studio 的
+// window.__gameState / window.__autoplay），正常玩家页面不注入。
+if (new URLSearchParams(location.search).get('autoplay') === '1') {
+  window.__gameState = getGameState;
+  window.__autoplay = autoplayStep;
+}
 import { installViewportLayout } from './viewport-layout.js';
 import { installGameTextGuard } from './ui-gestures.js';
 
