@@ -42,6 +42,8 @@ const state = {
   storage: null,
   drag: null,
   effectCleanup: null,
+  eliminating: false,
+  bufferedTap: null,
 };
 
 const DRAG_THRESHOLD = 10;
@@ -83,6 +85,7 @@ const toolAvailabilityEl = () => document.getElementById('toolAvailability');
 
 // ---- busy 与异步生命周期 ----
 function setBusy(value) {
+  if (value && !state.eliminating) state.bufferedTap = null;
   state.busy = value;
   updateLevelControls();
 }
@@ -116,6 +119,8 @@ function clearHintHighlight() {
 }
 
 function clearLevelAsync() {
+  state.eliminating = false;
+  state.bufferedTap = null;
   combo = 0;
   lastMatchAt = -Infinity;
   state.effectCleanup?.();
@@ -450,6 +455,7 @@ function rollbackPending() {
 function eliminate(a, b) {
   state.board[a.r][a.c] = null;
   state.board[b.r][b.c] = null;
+  state.eliminating = true;
   setBusy(true);
   cancelSelection();
   const cells = [a, b];
@@ -469,8 +475,10 @@ function eliminate(a, b) {
       delete p.el.dataset.rendered;
     });
     updateBoardProgress();
+    state.eliminating = false;
     setBusy(false);
     afterEliminate();
+    playBufferedTap();
   };
   const now = performance.now();
   combo = now - lastMatchAt < 2300 ? Math.min(combo + 1, 5) : 1;
@@ -736,9 +744,33 @@ function cellFromTarget(target) {
   return { r: +el.dataset.r, c: +el.dataset.c, el };
 }
 
+function playBufferedTap() {
+  const tap = state.bufferedTap;
+  if (!tap?.released || state.eliminating) return;
+  state.bufferedTap = null;
+  if (state.busy || state.phase !== 'playing' || state.mode !== 'idle' || state.drag) return;
+  if (state.board[tap.r][tap.c] !== tap.value || !findTargets(state.board, tap.r, tap.c).length) return;
+  onCellClick(tap.r, tap.c);
+}
+
+function movedPastTap(tap, event) {
+  return Math.abs(event.clientX - tap.x) > DRAG_THRESHOLD ||
+    Math.abs(event.clientY - tap.y) > DRAG_THRESHOLD;
+}
+
 function onPointerDown(e) {
-  if (state.busy || state.phase !== 'playing' || state.drag) return;
+  if (state.phase !== 'playing' || state.drag) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (state.busy) {
+    if (!state.eliminating || state.bufferedTap || e.isPrimary === false) return;
+    const cell = cellFromTarget(e.target);
+    if (!cell) return;
+    const { r, c } = cell;
+    const value = state.board[r][c];
+    if (value !== null) state.bufferedTap = { r, c, value, pointerId: e.pointerId, ...pointerXY(e), released: false };
+    return;
+  }
+  state.bufferedTap = null;
   if (!dragInput.begin(e.pointerId)) return;
 
   let cell = cellFromTarget(e.target);
@@ -876,6 +908,8 @@ const dragFrames = createDragFrameQueue({
 });
 
 function onPointerMove(e) {
+  const tap = state.bufferedTap;
+  if (tap?.pointerId === e.pointerId && !tap.released && movedPastTap(tap, e)) state.bufferedTap = null;
   if (!state.drag || !dragInput.owns(e.pointerId)) return;
   // Keep the latest point when touch events arrive faster than the display.
   dragFrames.push(e.clientX, e.clientY);
@@ -889,6 +923,10 @@ function handleDragMove(x, y) {
       state.drag.axis = Math.abs(dx) > Math.abs(dy) ? 'row' : 'col';
       state.drag.dragged = true;
       boardEl().dataset.dragAxis = state.drag.axis;
+      boardEl().dispatchEvent(new CustomEvent('bricks:drag-axis', {
+        bubbles: true,
+        detail: { axis: state.drag.axis, pointerId: state.drag.pointerId },
+      }));
       cancelSelection();
       if (state.pendingRevert) rollbackPending();
       state.drag.snapshot = cloneBoard(state.board);
@@ -984,6 +1022,17 @@ function handleDragMove(x, y) {
 }
 
 function onPointerUp(e) {
+  const tap = state.bufferedTap;
+  if (tap?.pointerId === e.pointerId && !tap.released) {
+    const cell = cellFromTarget(e.target);
+    if (cell?.r === tap.r && cell.c === tap.c && !movedPastTap(tap, e)) {
+      tap.released = true;
+      playBufferedTap();
+    } else {
+      state.bufferedTap = null;
+    }
+    return;
+  }
   if (!state.drag || !dragInput.owns(e.pointerId)) return;
   dragFrames.flush(e.clientX, e.clientY);
   dragInput.release(e.pointerId);
@@ -1077,6 +1126,7 @@ function onPointerUp(e) {
 }
 
 function onPointerCancel(e) {
+  if (state.bufferedTap?.pointerId === e.pointerId && !state.bufferedTap.released) state.bufferedTap = null;
   if (!state.drag || !dragInput.release(e.pointerId)) return;
   dragFrames.cancel();
   const info = state.drag;
@@ -1131,6 +1181,7 @@ export function initGame() {
   be.addEventListener('lostpointercapture', onPointerCancel);
   // Native tab navigation can interrupt a gesture without a final pointerup.
   const cancelInterruptedDrag = () => {
+    state.bufferedTap = null;
     if (state.drag) onPointerCancel({ pointerId: state.drag.pointerId });
     audio.suspend();
   };

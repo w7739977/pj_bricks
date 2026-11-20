@@ -6,6 +6,11 @@ const root=path.dirname(fileURLToPath(import.meta.url));
 const game=path.resolve(process.env.GAME_ROOT || path.join(root,'../..'));
 const dist=path.join(game,'dist');
 const reports=path.resolve(process.env.LAB_OUTPUT || path.join(root,'../../test-artifacts/performance'));
+const host=process.env.LAB_HOST || '127.0.0.1';
+const labAssets=new Map([
+  ['/__lab/probe.js','probe.js'],
+  ['/__lab/demo.css','demo.css'],
+]);
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2'};
 const server=http.createServer(async(req,res)=>{
   try {
@@ -20,8 +25,10 @@ const server=http.createServer(async(req,res)=>{
     }
     if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);res.end();return;}
     const route=decodeURIComponent(url.pathname);
-    const file=route==='/__lab/probe.js'?path.join(root,'probe.js'):path.resolve(dist,'.'+(route==='/'?'/index.html':route));
-    if(file!==path.join(root,'probe.js')&&!file.startsWith(dist+path.sep)){res.writeHead(403);res.end();return;}
+    const demo=route==='/demo';
+    const labAsset=labAssets.get(route);
+    const file=labAsset?path.join(root,labAsset):path.resolve(dist,'.'+(route==='/'||demo?'/index.html':route));
+    if(!labAsset&&!file.startsWith(dist+path.sep)){res.writeHead(403);res.end();return;}
     let data=await readFile(file);
     if(process.env.PROFILE==='1' && /\/game\/(board|interaction|move-animation)\.js$/.test(file)){
       const module=path.basename(file);let source=data.toString();
@@ -35,9 +42,16 @@ const server=http.createServer(async(req,res)=>{
       }
       data=Buffer.from(source);
     }
-    if(route==='/' || route==='/index.html') data=Buffer.from(data.toString().replace('</body>','<script type="module" src="/__lab/probe.js"></script></body>'));
+    if(route==='/' || route==='/index.html' || demo) {
+      let html=data.toString();
+      if(demo) html=html
+        .replace('<html ', '<html data-skin="orchard" ')
+        .replace(/<title>.*?<\/title>/, '<title>果园模式 · 田园连连看</title>')
+        .replace('</head>', '<link rel="stylesheet" href="/__lab/demo.css"></head>');
+      data=Buffer.from(html.replace('</body>','<script type="module" src="/__lab/probe.js"></script></body>'));
+    }
     res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});
     res.end(req.method==='HEAD'?undefined:data);
   } catch(error) {res.writeHead(error.code==='ENOENT'?404:500);res.end('Test server error');}
 });
-server.listen(Number(process.env.PORT||3014),'127.0.0.1',()=>console.log(`Game Test Lab: http://127.0.0.1:${server.address().port} (source: ${game})`));
+server.listen(Number(process.env.PORT||3014),host,()=>console.log(`Game Test Lab: http://${host}:${server.address().port} (source: ${game})`));

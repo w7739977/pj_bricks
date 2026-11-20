@@ -6,6 +6,7 @@ style.textContent+='html.lab-no-filter .veg{filter:none!important}html.lab-no-sh
 style.textContent+='html.lab-pause-idle .cell:not(.empty):nth-child(7n+1):not(.pop):not(.shake) .veg{animation:garden-breathe 4.6s steps(3,end) var(--idle-delay,0s) infinite!important}html.lab-pause-idle .board.gesture-active .veg{animation-play-state:paused!important}';
 style.textContent+='html.lab-fix .veg{filter:none!important;animation:none!important}';
 const panel=document.createElement('aside');panel.id='test-lab';
+const skinDemo=document.documentElement.hasAttribute('data-skin');
 panel.innerHTML='<b>游戏测试实验室 · pj_bricks</b><pre id="lab-state">准备采样</pre><button id="lab-save">保存报告</button><button id="lab-lite">A/B：简化特效</button><button id="lab-clear">清空采样</button><pre id="lab-last"></pre>';
 document.body.append(panel);
 const fold=document.createElement('button');fold.textContent='收起面板';panel.prepend(fold);
@@ -17,9 +18,39 @@ const toolGuard=new URLSearchParams(location.search).get('tool')==='1';
 let frameHistory=[];
 const arm=document.createElement('button');arm.textContent='启用持续拖动回放';panel.append(arm);
 arm.onclick=()=>{replayArmed=true;arm.textContent='已启用：长按有空位行的棋子 5 秒';};
-for(const [label,cls] of [['原版',''],['仅关滤镜','lab-no-filter'],['仅关阴影','lab-no-shadow'],['仅关空闲动画','lab-no-idle'],['暂停替代重启动画','lab-pause-idle'],['修正：保留棋子阴影','lab-fix']]){
+for(const [label,cls] of skinDemo ? [] : [['原版',''],['仅关滤镜','lab-no-filter'],['仅关阴影','lab-no-shadow'],['仅关空闲动画','lab-no-idle'],['暂停替代重启动画','lab-pause-idle'],['修正：保留棋子阴影','lab-fix']]){
   const button=document.createElement('button');button.textContent='实验：'+label;panel.append(button);
   button.onclick=()=>{document.documentElement.classList.remove('lab-lite','lab-no-filter','lab-no-shadow','lab-no-idle','lab-pause-idle','lab-fix');if(cls)document.documentElement.classList.add(cls);last.textContent='当前实验：'+label;};
+}
+if(skinDemo){
+  fold.remove();
+  arm.remove();
+  panel.querySelector('#lab-lite').hidden=true;
+  panel.querySelector('b').textContent='外观对照';
+  const title=document.querySelector('.topbar .title');
+  const originalTitle=title.textContent;
+  const updateTitle=()=>{title.textContent=document.documentElement.dataset.skin==='orchard'?'果园连连看':originalTitle;};
+  updateTitle();
+  const switcher=document.createElement('div');
+  switcher.className='skin-switch';
+  switcher.setAttribute('role','group');
+  switcher.setAttribute('aria-label','游戏外观');
+  for(const [skin,label] of [['original','原版'],['orchard','果园']]){
+    const button=document.createElement('button');
+    button.type='button';
+    button.textContent=label;
+    button.dataset.skinChoice=skin;
+    button.setAttribute('aria-pressed',String(skin===document.documentElement.dataset.skin));
+    button.onclick=()=>{
+      if(active||settling) return;
+      document.documentElement.dataset.skin=skin;
+      updateTitle();
+      for(const choice of switcher.children) choice.setAttribute('aria-pressed',String(choice===button));
+    };
+    switcher.append(button);
+  }
+  panel.querySelector('b').after(switcher);
+  state.textContent='点按或拖动即可采样';
 }
 const errors=[],longTasks=[],events=[];
 const percentile=(a,p)=>a.length?[...a].sort((a,b)=>a-b)[Math.min(a.length-1,Math.ceil(a.length*p)-1)]:null;
@@ -40,10 +71,12 @@ function frame(t){
 requestAnimationFrame(frame);
 window.addEventListener('pointerdown',e=>{
   const cell=e.target.closest?.('#board .cell:not(.empty)');
-  if(!cell||document.querySelector('dialog[open]'))return;
+  if(active||!cell||document.querySelector('dialog[open]'))return;
   active={id:++seq,pointerId:e.pointerId,type:e.pointerType,trusted:e.isTrusted,start:performance.now(),variant:document.documentElement.classList.contains('lab-lite')?'lite':'original',cell:{r:+cell.dataset.r,c:+cell.dataset.c},before:cells(),frames:[],inputToRAF:[],dispatchLag:[],moves:0,startXY:[e.clientX,e.clientY],maxDistance:0,baseline:stats(baseline)};
+  active.dragAxis=null;active.dragAxisMs=null;
   active.processing=[];active.syntheticMoves=0;active.trustedMoves=0;active.toolGuard=toolGuard;active.ignoredNative=[];
-  active.variant=[...document.documentElement.classList].filter(c=>/^lab-/.test(c)).join('+')||'original';
+  active.variant=skinDemo?document.documentElement.dataset.skin:
+    [...document.documentElement.classList].filter(c=>/^lab-/.test(c)).join('+')||'original';
   if(replayArmed){
     replayArmed=false;arm.textContent='启用持续拖动回放';active.inputMode='trusted hold + synthetic frame-paced moves';
     const sample=active,x=e.clientX,y=e.clientY,id=e.pointerId,pitch=cell.getBoundingClientRect().width+2,start=performance.now();
@@ -61,6 +94,11 @@ window.addEventListener('pointerdown',e=>{
   } else active.inputMode='native';
   prev=null;
 },true);
+window.addEventListener('bricks:drag-axis',e=>{
+  if(!active||e.detail.pointerId!==active.pointerId)return;
+  active.dragAxis=e.detail.axis;
+  active.dragAxisMs=performance.now()-active.start;
+});
 window.addEventListener('pointermove',e=>{
   if(!active||e.pointerId!==active.pointerId)return;
   if(toolGuard&&e.isTrusted){active.ignoredNative.push({x:e.clientX,y:e.clientY,t:performance.now()});e.stopImmediatePropagation();return;}
@@ -84,22 +122,39 @@ function finish(e){
     a.releaseSlowFrames=a.releaseFrames.filter(x=>x>period*1.5).length;
     a.longTasks=longTasks.filter(t=>t.startTime<a.end+1000&&t.startTime+t.duration>a.start);
     a.eventTiming=events.filter(t=>t.startTime>=a.start&&t.startTime<=a.end+1000);
-    a.movedLayerObserved=Boolean(a.layerSeen);a.kind=a.maxDistance>8?'drag':'click';
+    a.movedLayerObserved=Boolean(a.layerSeen);a.kind=a.dragAxis?'drag':'click';
     a.verdict=a.cancelled?'cancelled':a.kind!=='drag'?'functional observation':a.frames.length<30||a.moves<10||!a.layerSeen?'insufficient samples':a.slowFrames/a.frames.length>.05||a.longTasks.length||a.releaseStats.max>50?'jank observed':'no jank observed in this sample';
     settling--;
-    sessions.push(a);last.textContent=`#${a.id} ${a.kind} ${a.variant}\n${a.verdict}\nrAF P95 ${round(a.frameStats.p95)}ms · 慢帧 ${a.slowFrames}/${a.frames.length}\n松手最大帧间隔 ${round(a.releaseStats.max)}ms\n长任务 ${a.longTasks.length} · 移动事件 ${a.moves}`;
+    sessions.push(a);
+    if(skinDemo){
+      const label=a.variant==='orchard'?'果园':'原版';
+      const action=a.kind==='drag'?'拖动':'点按';
+      const interval=a.kind==='drag'?`拖动 P95 ${round(a.frameStats.p95)} ms · `:'';
+      state.textContent=`样本 ${sessions.length} · ${label} · ${action}`;
+      last.textContent=a.cancelled?'这次操作已取消':`${interval}松手峰值 ${round(a.releaseStats.max)} ms`;
+    }else{
+      last.textContent=`#${a.id} ${a.kind} ${a.variant}\n${a.verdict}\nrAF P95 ${round(a.frameStats.p95)}ms · 慢帧 ${a.slowFrames}/${a.frames.length}\n松手最大帧间隔 ${round(a.releaseStats.max)}ms\n长任务 ${a.longTasks.length} · 移动事件 ${a.moves}`;
+    }
   },1100);
 }
 window.addEventListener('pointerup',finish);window.addEventListener('pointercancel',finish);
 window.addEventListener('blur',()=>{if(active)finish({pointerId:active.pointerId,type:'blur'})});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&active)finish({pointerId:active.pointerId,type:'hidden'})});
-setInterval(()=>{if(active?.maxDistance>8)active.layerSeen ||= !!document.querySelector('.drag-layer');state.textContent=`样本 ${sessions.length} · 异常 ${errors.length}\n${active?`正在操作：${active.moves} 个移动事件`:'每次拖动建议持续 2 秒以上'}\n空闲 rAF P95 ${round(stats(baseline).p95)}ms\n此指标不是 GPU 呈现帧率`;},250);
+setInterval(()=>{
+  if(active?.dragAxis)active.layerSeen ||= !!document.querySelector('.drag-layer');
+  if(!skinDemo)state.textContent=`样本 ${sessions.length} · 异常 ${errors.length}\n${active?`正在操作：${active.moves} 个移动事件`:'每次拖动建议持续 2 秒以上'}\n空闲 rAF P95 ${round(stats(baseline).p95)}ms\n此指标不是 GPU 呈现帧率`;
+},250);
 panel.querySelector('#lab-lite').onclick=()=>{document.documentElement.classList.toggle('lab-lite');panel.querySelector('#lab-lite').textContent=document.documentElement.classList.contains('lab-lite')?'A/B：恢复原特效':'A/B：简化特效';};
-panel.querySelector('#lab-clear').onclick=()=>{if(active)return;sessions=[];last.textContent='采样已清空';};
+panel.querySelector('#lab-clear').onclick=()=>{
+  if(active||settling)return;
+  sessions=[];
+  if(skinDemo)state.textContent='点按或拖动即可采样';
+  last.textContent='采样已清空';
+};
 panel.querySelector('#lab-save').onclick=async()=>{
   if(active||settling){last.textContent='操作仍在记录，请松手后等待 1.1 秒再保存';return;}
-  const report={schemaVersion:3,createdAt:new Date().toISOString(),game:'pj_bricks',url:location.href,userAgent:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},supports:{longtask:PerformanceObserver.supportedEntryTypes.includes('longtask'),event:PerformanceObserver.supportedEntryTypes.includes('event')},resources:performance.getEntriesByType('resource').filter(e=>e.name.startsWith(location.origin+'/')).map(e=>({name:e.name,duration:e.duration,transferSize:e.transferSize,startTime:e.startTime})),navigation:performance.getEntriesByType('navigation').map(e=>({domContentLoaded:e.domContentLoadedEventEnd,load:e.loadEventEnd,response:e.responseEnd})),notes:['inputMode 和 syntheticMoves/trustedMoves 标识回放来源。','rAF 和输入至下一帧回调不是 GPU 呈现帧率或完整端到端输入延迟。','少于30帧或10个移动事件的拖动不足以作性能结论；后台标签页样本取消。','longTasks 包含松手后1秒；A/B 特效开关仅作用于测试页。'],spans:window.__labSpans||null,sessions,errors};
-  if(!['127.0.0.1','localhost','[::1]'].includes(location.hostname)){
+  const report={schemaVersion:3,createdAt:new Date().toISOString(),game:'pj_bricks',url:location.href,userAgent:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},supports:{longtask:PerformanceObserver.supportedEntryTypes.includes('longtask'),event:PerformanceObserver.supportedEntryTypes.includes('event')},resources:performance.getEntriesByType('resource').filter(e=>e.name.startsWith(location.origin+'/')).map(e=>({name:e.name,duration:e.duration,transferSize:e.transferSize,startTime:e.startTime})),navigation:performance.getEntriesByType('navigation').map(e=>({domContentLoaded:e.domContentLoadedEventEnd,load:e.loadEventEnd,response:e.responseEnd})),notes:['dragAxisMs 是按下到游戏实际锁轴的耗时。','inputMode 和 syntheticMoves/trustedMoves 标识回放来源。','rAF 和输入至下一帧回调不是 GPU 呈现帧率或完整端到端输入延迟。','少于30帧或10个移动事件的拖动不足以作性能结论；后台标签页样本取消。','longTasks 包含松手后1秒；A/B 特效开关仅作用于测试页。'],spans:window.__labSpans||null,sessions,errors};
+  if(skinDemo||!['127.0.0.1','localhost','[::1]'].includes(location.hostname)){
     let output=panel.querySelector('#lab-report');if(!output){output=document.createElement('textarea');output.id='lab-report';output.readOnly=true;output.setAttribute('aria-label','性能报告 JSON');output.style.cssText='width:100%;height:80px';panel.append(output);}
     const json=JSON.stringify(report);
     let download=panel.querySelector('#lab-download');
