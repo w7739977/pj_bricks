@@ -837,3 +837,19 @@ body { background: radial-gradient(ellipse at 50% 15%, #77bda0, #418e76 78%); }
   filter: none !important;
   animation: none !important;
 }
+
+/* Stationary guide marks leave tile transforms free for the actual gesture. */
+.cell.drag-guide-start::before,
+.cell.drag-guide-end::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid #d7f892;
+  border-radius: 5px;
+  z-index: 2;
+  pointer-events: none;
+}
+.cell.drag-guide-end::before {
+  border-color: #ffd372;
+  border-style: dashed;
+}

@@ -38,6 +38,8 @@ const state = {
   tipTimer: null,
   hintTimer: null,
   hintCells: [],
+  dragGuideCells: [],
+  dragGuideShown: false,
   reshuffleNonce: 0,
   storage: null,
   drag: null,
@@ -116,6 +118,8 @@ function clearHintHighlight() {
   state.hintTimer = null;
   state.hintCells.forEach(el => el.classList.remove('hint'));
   state.hintCells = [];
+  for (const [cell, className] of state.dragGuideCells) cell.classList.remove(className);
+  state.dragGuideCells = [];
 }
 
 function clearLevelAsync() {
@@ -522,16 +526,35 @@ function shakeSameEmoji(value) {
   }
 }
 
+function showDragGuide(solution) {
+  const { r, c, chain, delta } = solution.shiftFrom;
+  const horizontal = chain.axis === 'row';
+  const { r1, c1 } = solution.pair;
+  const direction = horizontal ? (delta > 0 ? '右' : '左') : (delta > 0 ? '下' : '上');
+  clearHintHighlight();
+  state.dragGuideCells = [
+    [state.cellEls[r][c], 'drag-guide-start'],
+    [state.cellEls[r1][c1], 'drag-guide-end'],
+  ];
+  for (const [cell, className] of state.dragGuideCells) cell.classList.add(className);
+  state.dragGuideShown = true;
+  showTip(`按住绿框棋子，向${direction}拖 ${Math.abs(delta)} 格到金框`);
+  state.hintTimer = scheduleForSession(clearHintHighlight, 2500);
+}
+
 // ---- 提示与资源 ----
 function hint() {
   if (state.busy || state.phase !== 'playing' || state.mode !== 'idle') return;
   clearTip();
   const pair = findSolvablePair(state.board);
   if (!pair) {
-    // 无直接配对：检查是否存在"拖拽可达"的解。
-    // 有则只做文字提示，不消耗提示次数、不判死局。
+    const guide = findSolvablePairDeep(state.board, { forwardOnly: true });
+    if (guide.shiftFrom) {
+      showDragGuide(guide);
+      return;
+    }
     if (hasAnySolvablePairDeep(state.board)) {
-      showTip('当前没有可直连的配对，试试拖动整行或整列！');
+      showTip('试试拖动相连的一段棋子，寻找可以配对的位置');
       return;
     }
     // 真死局：无论提示次数是否为 0，都必须触发死局流程
@@ -542,7 +565,7 @@ function hint() {
   if (outcome.action === 'none') {
     // 提示次数已用尽：不能静默——有解则告知，无解则走死局流程
     if (hasAnySolvablePairDeep(state.board)) {
-      showTip('提示次数已用尽，试试拖动整行或整列寻找机会！');
+      showTip('提示次数已用尽，试试拖动相连的一段棋子寻找机会！');
     } else {
       void handleDeadlock();
     }
@@ -611,6 +634,13 @@ function afterEliminate() {
     if (state.busy || state.drag || state.mode !== 'idle' || state.pendingRevert) {
       scheduleForSession(checkDeadlock, 120);
       return;
+    }
+    if (state.currentLevel === 1 && !state.dragGuideShown) {
+      const guide = findSolvablePairDeep(state.board, { forwardOnly: true });
+      if (guide.shiftFrom) {
+        showDragGuide(guide);
+        return;
+      }
     }
     if (!hasAnySolvablePairDeep(state.board)) void handleDeadlock();
   };

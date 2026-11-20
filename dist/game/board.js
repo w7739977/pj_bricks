@@ -331,7 +331,7 @@ export function restoreBoard(board, snap) {
 // 拖拽主体是"链"：抓取段内任意子链（抓中间一颗时只有其前方部分跟随），
 // 枚举按子链口径展开。
 
-export function findSolvablePairDeep(board) {
+export function findSolvablePairDeep(board, { forwardOnly = false } = {}) {
   const direct = findSolvablePair(board);
   if (direct) return { direct: true, depth: 0, pair: direct, board: null };
 
@@ -341,7 +341,7 @@ export function findSolvablePairDeep(board) {
     if (board[r][c] === null) continue;
     for (const axis of ['row', 'col']) for (const dir of [-1, 1]) {
       const chain = createShiftChain(board, r, c, axis, dir);
-      for (const moveDir of [-1, 1]) {
+      for (const moveDir of forwardOnly ? [dir] : [-1, 1]) {
         const probe = cloneBoard(board);
         const capacity = Math.abs(applyShift(probe, r, c, chain, moveDir * (axis === 'row' ? COLS : ROWS)).applied);
         for (let dist = 1; dist <= capacity; dist++) {

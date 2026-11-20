@@ -45,7 +45,7 @@ const server=http.createServer(async(req,res)=>{
     if(route==='/' || route==='/index.html' || demo) {
       let html=data.toString();
       if(demo) html=html
-        .replace('<html ', '<html data-skin="orchard" ')
+        .replace('<html ', '<html data-lab-demo ')
         .replace(/<title>.*?<\/title>/, '<title>果园模式 · 田园连连看</title>')
         .replace('</head>', '<link rel="stylesheet" href="/__lab/demo.css"></head>');
       data=Buffer.from(html.replace('</body>','<script type="module" src="/__lab/probe.js"></script></body>'));

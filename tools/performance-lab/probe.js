@@ -6,7 +6,7 @@ style.textContent+='html.lab-no-filter .veg{filter:none!important}html.lab-no-sh
 style.textContent+='html.lab-pause-idle .cell:not(.empty):nth-child(7n+1):not(.pop):not(.shake) .veg{animation:garden-breathe 4.6s steps(3,end) var(--idle-delay,0s) infinite!important}html.lab-pause-idle .board.gesture-active .veg{animation-play-state:paused!important}';
 style.textContent+='html.lab-fix .veg{filter:none!important;animation:none!important}';
 const panel=document.createElement('aside');panel.id='test-lab';
-const skinDemo=document.documentElement.hasAttribute('data-skin');
+const skinDemo=document.documentElement.hasAttribute('data-lab-demo');
 panel.innerHTML='<b>游戏测试实验室 · pj_bricks</b><pre id="lab-state">准备采样</pre><button id="lab-save">保存报告</button><button id="lab-lite">A/B：简化特效</button><button id="lab-clear">清空采样</button><pre id="lab-last"></pre>';
 document.body.append(panel);
 const fold=document.createElement('button');fold.textContent='收起面板';panel.prepend(fold);
@@ -28,8 +28,8 @@ if(skinDemo){
   panel.querySelector('#lab-lite').hidden=true;
   panel.querySelector('b').textContent='外观对照';
   const title=document.querySelector('.topbar .title');
-  const originalTitle=title.textContent;
-  const updateTitle=()=>{title.textContent=document.documentElement.dataset.skin==='orchard'?'果园连连看':originalTitle;};
+  const orchardTitle=title.textContent;
+  const updateTitle=()=>{title.textContent=document.documentElement.dataset.skin==='orchard'?orchardTitle:'田园连连看';};
   updateTitle();
   const switcher=document.createElement('div');
   switcher.className='skin-switch';
