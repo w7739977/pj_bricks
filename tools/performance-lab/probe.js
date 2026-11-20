@@ -50,6 +50,19 @@ if(skinDemo){
     switcher.append(button);
   }
   panel.querySelector('b').after(switcher);
+  const pickup=document.createElement('button');
+  pickup.type='button';
+  pickup.id='lab-pickup';
+  pickup.textContent='预跟随';
+  pickup.setAttribute('aria-pressed','false');
+  pickup.onclick=()=>{
+    if(active||settling)return;
+    const enabled=pickup.getAttribute('aria-pressed')==='false';
+    document.documentElement.dataset.pickup=enabled?'preview':'baseline';
+    pickup.setAttribute('aria-pressed',String(enabled));
+    last.textContent=enabled?'起拖预跟随已开启':'已恢复原起拖';
+  };
+  switcher.after(pickup);
   state.textContent='点按或拖动即可采样';
 }
 const errors=[],longTasks=[],events=[];
@@ -74,6 +87,8 @@ window.addEventListener('pointerdown',e=>{
   if(active||!cell||document.querySelector('dialog[open]'))return;
   active={id:++seq,pointerId:e.pointerId,type:e.pointerType,trusted:e.isTrusted,start:performance.now(),variant:document.documentElement.classList.contains('lab-lite')?'lite':'original',cell:{r:+cell.dataset.r,c:+cell.dataset.c},before:cells(),frames:[],inputToRAF:[],dispatchLag:[],moves:0,startXY:[e.clientX,e.clientY],maxDistance:0,baseline:stats(baseline)};
   active.dragAxis=null;active.dragAxisMs=null;
+  active.pickup=document.documentElement.dataset.pickup||'baseline';
+  active.firstDragOffset=null;
   active.processing=[];active.syntheticMoves=0;active.trustedMoves=0;active.toolGuard=toolGuard;active.ignoredNative=[];
   active.variant=skinDemo?document.documentElement.dataset.skin:
     [...document.documentElement.classList].filter(c=>/^lab-/.test(c)).join('+')||'original';
@@ -94,6 +109,11 @@ window.addEventListener('pointerdown',e=>{
   } else active.inputMode='native';
   prev=null;
 },true);
+window.addEventListener('bricks:drag-offset',e=>{
+  if(!active||e.detail.pointerId!==active.pointerId)return;
+  const {distance,beforeAxisLock}=e.detail;
+  active.firstDragOffset={ms:performance.now()-active.start,distance,beforeAxisLock};
+});
 window.addEventListener('bricks:drag-axis',e=>{
   if(!active||e.detail.pointerId!==active.pointerId)return;
   active.dragAxis=e.detail.axis;

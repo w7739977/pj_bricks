@@ -48,6 +48,11 @@ html[data-skin] #test-lab button:focus-visible {
   outline-offset: 1px;
 }
 
+html[data-skin] #test-lab #lab-pickup {
+  grid-column: 1 / -1;
+  justify-self: start;
+  border-color: #70917c;
+}
 html[data-skin] #test-lab #lab-save { border-color: #70917c; }
 html[data-skin] #test-lab #lab-state,
 html[data-skin] #test-lab #lab-last {

@@ -804,6 +804,9 @@ function onPointerDown(e) {
     r: cell.r, c: cell.c,
     startX: x, startY: y,
     axis: null,
+    pickupExperiment: document.documentElement.dataset.pickup === 'preview',
+    pickupPiece: null,
+    offsetReported: false,
     chain: null,
     chainCells: null,
     bounds: null,
@@ -893,7 +896,12 @@ function updateDragTrace() {
   vacatedCells = nextVacated;
 }
 
+function clearPickupPreview() {
+  state.drag?.pickupPiece?.style.removeProperty('transform');
+}
+
 function hideDragTrace() {
+  clearPickupPreview();
   clearDragFeedback();
   for (const el of traceCells) el.classList.remove('trace');
   for (const el of vacatedCells) el.classList.remove('vacated');
@@ -915,11 +923,31 @@ function onPointerMove(e) {
   dragFrames.push(e.clientX, e.clientY);
 }
 
+// Demo only. Match the preview at the lock threshold and reach full travel at half a cell.
+function pickupVisualDistance(distance) {
+  const magnitude = Math.abs(distance);
+  const blend = Math.min(1, Math.max(0, (magnitude - DRAG_THRESHOLD) /
+    Math.max(1, state.pitch / 2 - DRAG_THRESHOLD)));
+  return distance * (0.4 + 0.6 * blend);
+}
+
+function reportFirstDragOffset(distance) {
+  const drag = state.drag;
+  if (drag.offsetReported || Math.abs(distance) < 1) return;
+  drag.offsetReported = true;
+  boardEl().dispatchEvent(new CustomEvent('bricks:drag-offset', {
+    bubbles: true,
+    detail: { pointerId: drag.pointerId, distance, beforeAxisLock: !drag.axis },
+  }));
+}
+
 function handleDragMove(x, y) {
   const dx = x - state.drag.startX;
   const dy = y - state.drag.startY;
   if (!state.drag.axis) {
     if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+      state.drag.pickupPiece?.style.removeProperty('transform');
+      state.drag.pickupPiece = null;
       state.drag.axis = Math.abs(dx) > Math.abs(dy) ? 'row' : 'col';
       state.drag.dragged = true;
       boardEl().dataset.dragAxis = state.drag.axis;
@@ -962,7 +990,26 @@ function handleDragMove(x, y) {
         state.drag.locked = true;
       }
       updateDragTrace();
-    } else return;
+    } else {
+      if (state.drag.pickupExperiment) {
+        const horizontal = Math.abs(dx) > Math.abs(dy);
+        const axis = horizontal ? 'row' : 'col';
+        const { r, c } = state.drag;
+        if (hasLineEmptyCell(state.board, r, c, axis)) {
+          const piece = state.drag.pickupPiece ?? pressedCell?.querySelector('.tile-piece');
+          const offset = pickupVisualDistance(horizontal ? dx : dy);
+          if (piece) {
+            state.drag.pickupPiece = piece;
+            piece.style.transform = horizontal ? `translateX(${offset}px)` : `translateY(${offset}px)`;
+            reportFirstDragOffset(offset);
+          }
+        } else {
+          state.drag.pickupPiece?.style.removeProperty('transform');
+          state.drag.pickupPiece = null;
+        }
+      }
+      return;
+    }
   }
 
   const rawDistance = state.drag.axis === 'row' ? dx : dy;
@@ -1001,15 +1048,19 @@ function handleDragMove(x, y) {
   }
 
   // 视觉残差：只有拖拽轴上有分量，另一轴恒为 0
+  const visualOffset = state.drag.pickupExperiment && !result.constrained
+    ? pickupVisualDistance(distance) - state.drag.appliedTotal * state.pitch
+    : result.visualOffset;
   const residual = state.drag.axis === 'row'
-    ? { x: result.visualOffset, y: 0 }
-    : { x: 0, y: result.visualOffset };
+    ? { x: visualOffset, y: 0 }
+    : { x: 0, y: visualOffset };
   state.drag.visualOffset = residual;
   // 视觉总位移 = 已吸附格数 × 格距 + 残差，且只加在拖拽轴上
   const totalOffset = state.drag.axis === 'row'
     ? { x: state.drag.appliedTotal * state.pitch + residual.x, y: 0 }
     : { x: 0, y: state.drag.appliedTotal * state.pitch + residual.y };
   moveAnimator.follow(state.drag.chainCells, totalOffset.x, totalOffset.y);
+  reportFirstDragOffset(totalOffset.x || totalOffset.y);
 
   setDragBlocked(result.constrained || Math.abs(rawDistance - distance) > .5);
   if (result.constrained) {
@@ -1046,6 +1097,7 @@ function onPointerUp(e) {
     moved: state.drag.moved,
     visualOffset: state.drag.visualOffset,
   };
+  clearPickupPreview();
   state.drag = null;
   if (boardEl().hasPointerCapture?.(e.pointerId)) boardEl().releasePointerCapture(e.pointerId);
   hideDragTrace();
@@ -1130,6 +1182,7 @@ function onPointerCancel(e) {
   if (!state.drag || !dragInput.release(e.pointerId)) return;
   dragFrames.cancel();
   const info = state.drag;
+  clearPickupPreview();
   state.drag = null;
   if (boardEl().hasPointerCapture?.(e.pointerId)) boardEl().releasePointerCapture(e.pointerId);
   hideDragTrace();
